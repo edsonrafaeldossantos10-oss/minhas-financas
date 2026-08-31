@@ -6,7 +6,7 @@ Views.relatorios = {
   async render() {
     return `
       <div class="tabs">
-        ${['hoje', 'mes', 'anterior', '3meses', 'ano', 'personalizado'].map((p) => `
+        ${['hoje', 'mes', 'anterior', 'trimestre', 'semestre', 'ano', 'personalizado'].map((p) => `
           <button class="${this.periodo === p ? 'ativo' : ''}" data-action="mudarPeriodo" data-periodo="${p}">${rotuloPeriodoRelatorio(p)}</button>
         `).join('')}
       </div>
@@ -49,6 +49,9 @@ Views.relatorios = {
     });
 
     const meses = await this.ultimosMeses(6);
+    const maioresDespesas = Store.maioresDespesas(transacoes, 5);
+    const { year, month } = currentYearMonth();
+    const comparativo = await Store.resumoComparativoMes(year, month);
 
     const container = document.getElementById('conteudo-relatorio');
     if (!container) return;
@@ -99,6 +102,34 @@ Views.relatorios = {
             <div class="info"><div class="desc">${escapeHTML(cat)}</div></div>
             <span class="valor despesa">${formatBRL(valor)}</span>
           </div>`).join('') || vazioMini('🏆', 'Sem dados suficientes ainda.')}
+      </div>
+
+      <div class="section-title">Maiores despesas do período</div>
+      <div class="card">
+        ${maioresDespesas.length ? maioresDespesas.map((t, i) => `
+          <div class="lista-item">
+            <span class="icone-tipo despesa">${i + 1}º</span>
+            <div class="info"><div class="desc">${escapeHTML(t.descricao)}</div><div class="meta">${formatDateBR(t.data)}${t.categoria ? ' · ' + escapeHTML(t.categoria) : ''}</div></div>
+            <span class="valor despesa">${formatBRL(t.valor)}</span>
+          </div>`).join('') : vazioMini('🏆', 'Sem despesas neste período.')}
+      </div>
+
+      <div class="section-title">Comparação mensal</div>
+      <div class="card">
+        <div class="texto-suave mb-8">Mês atual comparado ao anterior, independente do período filtrado acima.</div>
+        <div class="grid-2 mb-8">
+          <div class="kpi-mini receita"><div class="rotulo">Receitas este mês</div><div class="valor">${formatBRL(comparativo.atual.receitas)}</div></div>
+          <div class="kpi-mini"><div class="rotulo">Receitas mês anterior</div><div class="valor">${formatBRL(comparativo.anterior.receitas)}</div></div>
+        </div>
+        <div class="grid-2 mb-8">
+          <div class="kpi-mini despesa"><div class="rotulo">Despesas este mês</div><div class="valor">${formatBRL(comparativo.atual.despesas)}</div></div>
+          <div class="kpi-mini"><div class="rotulo">Despesas mês anterior</div><div class="valor">${formatBRL(comparativo.anterior.despesas)}</div></div>
+        </div>
+        ${comparativo.anterior.despesas > 0 ? `
+        <div class="comparativo-box ${comparativo.deltaDespesasPct <= 0 ? 'positivo' : 'negativo'}">
+          <span class="selo">${comparativo.deltaDespesasPct <= 0 ? '🟢' : '🔴'}</span>
+          <span class="texto">Você gastou <strong>${Math.abs(comparativo.deltaDespesasPct).toFixed(1)}% ${comparativo.deltaDespesasPct <= 0 ? 'menos' : 'mais'}</strong> que no mês passado.</span>
+        </div>` : ''}
       </div>
     `;
 
@@ -151,8 +182,12 @@ Views.relatorios = {
         const y = month === 0 ? year - 1 : year;
         return { inicio: isoDateForYearMonthDay(y, m, 1), fim: isoDateForYearMonthDay(y, m, daysInMonth(y, m)) };
       }
-      case '3meses': {
+      case 'trimestre': {
         const d = new Date(year, month - 2, 1);
+        return { inicio: isoDateForYearMonthDay(d.getFullYear(), d.getMonth(), 1), fim: isoDateForYearMonthDay(year, month, daysInMonth(year, month)) };
+      }
+      case 'semestre': {
+        const d = new Date(year, month - 5, 1);
         return { inicio: isoDateForYearMonthDay(d.getFullYear(), d.getMonth(), 1), fim: isoDateForYearMonthDay(year, month, daysInMonth(year, month)) };
       }
       case 'ano': return { inicio: `${year}-01-01`, fim: `${year}-12-31` };
@@ -177,5 +212,5 @@ Views.relatorios = {
 };
 
 function rotuloPeriodoRelatorio(p) {
-  return { hoje: 'Hoje', mes: 'Este mês', anterior: 'Mês anterior', '3meses': 'Últimos 3 meses', ano: 'Este ano', personalizado: 'Personalizado' }[p];
+  return { hoje: 'Hoje', mes: 'Este mês', anterior: 'Mês anterior', trimestre: 'Trimestre', semestre: 'Semestre', ano: 'Este ano', personalizado: 'Personalizado' }[p];
 }

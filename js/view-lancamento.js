@@ -28,6 +28,7 @@ Views.lancar = {
 
     const editando = !!transacao;
     const hoje = todayISODate();
+    const formaPagamentoPadrao = transacao ? transacao.formaPagamento : (params.formaPagamento || 'dinheiro');
 
     return `
       <form data-form="salvarLancamento" data-editando="${editando ? transacao.id : ''}">
@@ -84,10 +85,10 @@ Views.lancar = {
           <div class="campo">
             <label>Forma de pagamento</label>
             <select name="formaPagamento" data-onchange="mudarFormaPagamento">
-              ${FORMAS_PAGAMENTO.map((f) => `<option value="${f.valor}" ${(transacao ? transacao.formaPagamento : 'dinheiro') === f.valor ? 'selected' : ''}>${f.label}</option>`).join('')}
+              ${FORMAS_PAGAMENTO.map((f) => `<option value="${f.valor}" ${formaPagamentoPadrao === f.valor ? 'selected' : ''}>${f.label}</option>`).join('')}
             </select>
           </div>
-          <div id="campo-cartao" style="display:${(transacao && transacao.formaPagamento === 'credito') ? 'block' : 'none'}">
+          <div id="campo-cartao" style="display:${formaPagamentoPadrao === 'credito' ? 'block' : 'none'}">
             <div class="campo">
               <label>Cartão</label>
               <select name="cartaoId">

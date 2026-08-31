@@ -78,12 +78,20 @@ const App = {
 
   navigate(view, params = {}, { pushHash = true } = {}) {
     if (!Views[view]) view = 'dashboard';
+    this.fecharModaisAbertos();
     this.current = { view, params };
     if (pushHash) {
       const qs = new URLSearchParams(params).toString();
       location.hash = `#/${view}${qs ? '?' + qs : ''}`;
     }
     this.renderView();
+  },
+
+  // Evita um modal (ex: o seletor "+") ficar preso na tela caso a navegação
+  // mude por trás dele — por exemplo o botão "voltar" do Android disparando
+  // uma troca de hash enquanto um modal está aberto.
+  fecharModaisAbertos() {
+    document.querySelectorAll('.overlay').forEach((el) => el.remove());
   },
 
   async renderView() {
@@ -215,6 +223,10 @@ const App = {
         <span class="icone-tipo despesa">🔴</span>
         <span><span class="texto">Despesa</span><br><span class="sub">Dinheiro que saiu</span></span>
       </button>
+      <button class="opcao-lancamento" data-modal-action="__ir_cartao">
+        <span class="icone-tipo despesa">💳</span>
+        <span><span class="texto">Compra no cartão</span><br><span class="sub">Despesa já no crédito</span></span>
+      </button>
       <button class="opcao-lancamento" data-modal-action="__ir_transferencia">
         <span class="icone-tipo transferencia">🔵</span>
         <span><span class="texto">Transferência</span><br><span class="sub">Entre suas contas</span></span>
@@ -232,6 +244,10 @@ const App = {
         this.navigate('lancar', { tipo });
       };
     });
+    window.__modalHandlers.__ir_cartao = () => {
+      this.closeModal('seletor-modal');
+      this.navigate('lancar', { tipo: 'despesa', formaPagamento: 'credito' });
+    };
   },
 
   async registrarServiceWorker() {

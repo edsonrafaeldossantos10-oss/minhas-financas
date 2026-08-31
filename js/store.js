@@ -275,6 +275,118 @@ const Store = {
     return total;
   },
 
+  // --------------------------------------------------- V2: visão consolidada
+  async resumoCartoesConsolidado() {
+    const cartoes = await this.listCartoes();
+    const transacoes = await DB.getAll('transacoes');
+    let limiteTotal = 0, limiteUtilizado = 0, faturaAtual = 0;
+    let proxima = null;
+    for (const cartao of cartoes) {
+      const resumo = await this.resumoCartao(cartao, transacoes);
+      limiteTotal += Number(cartao.limite) || 0;
+      limiteUtilizado += resumo.limiteUtilizado;
+      faturaAtual += resumo.faturaAtual;
+      resumo.proximasFaturas.forEach((f) => {
+        if (f.valor > 0 && (!proxima || f.vencimento < proxima.vencimento)) {
+          proxima = { ...f, cartao: cartao.nome };
+        }
+      });
+    }
+    return {
+      temCartoes: cartoes.length > 0,
+      limiteTotal,
+      limiteUtilizado,
+      limiteDisponivel: Math.max(0, limiteTotal - limiteUtilizado),
+      pctUtilizado: limiteTotal > 0 ? (limiteUtilizado / limiteTotal) * 100 : 0,
+      faturaAtual,
+      proximaFatura: proxima,
+    };
+  },
+
+  categoriasComPercentual(transacoes, tipo = 'despesa') {
+    const porCategoria = {};
+    let total = 0;
+    transacoes.filter((t) => t.tipo === tipo).forEach((t) => {
+      const cat = t.categoria || 'Outros';
+      porCategoria[cat] = (porCategoria[cat] || 0) + t.valor;
+      total += t.valor;
+    });
+    return Object.entries(porCategoria)
+      .map(([categoria, valor]) => ({ categoria, valor, pct: total > 0 ? (valor / total) * 100 : 0 }))
+      .sort((a, b) => b.valor - a.valor);
+  },
+
+  maioresDespesas(transacoes, limit = 5) {
+    return transacoes
+      .filter((t) => t.tipo === 'despesa')
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, limit);
+  },
+
+  async resumoComparativoMes(year, month) {
+    const mesAnterior = month === 0 ? { y: year - 1, m: 11 } : { y: year, m: month - 1 };
+    const [atual, anterior] = await Promise.all([
+      this.resumoMes(year, month),
+      this.resumoMes(mesAnterior.y, mesAnterior.m),
+    ]);
+    const variacao = (valorAtual, valorAnterior) => {
+      if (valorAnterior > 0) return ((valorAtual - valorAnterior) / valorAnterior) * 100;
+      return valorAtual > 0 ? 100 : 0;
+    };
+    return {
+      atual,
+      anterior,
+      deltaDespesasPct: variacao(atual.despesas, anterior.despesas),
+      deltaReceitasPct: variacao(atual.receitas, anterior.receitas),
+    };
+  },
+
+  // Gera frases curtas baseadas SOMENTE nos dados reais já calculados — nunca
+  // inventa nada. Cada insight só entra na lista se houver base concreta.
+  gerarInsights({ comparativo, categoriasDespesa, cartoesResumo, metas }) {
+    const insights = [];
+    const { atual, deltaDespesasPct } = comparativo;
+
+    if (categoriasDespesa.length > 0) {
+      const top = categoriasDespesa[0];
+      insights.push({
+        emoji: '🛒',
+        texto: `${top.categoria} foi sua maior categoria de despesas este mês (${formatBRL(top.valor)}, ${top.pct.toFixed(0)}%).`,
+      });
+    }
+
+    if (atual.despesas > 0 && comparativo.anterior.despesas > 0) {
+      if (deltaDespesasPct <= -1) {
+        insights.push({ emoji: '📉', texto: `Você gastou ${Math.abs(deltaDespesasPct).toFixed(0)}% menos que no mês passado.` });
+      } else if (deltaDespesasPct >= 1) {
+        insights.push({ emoji: '📈', texto: `Você gastou ${deltaDespesasPct.toFixed(0)}% mais que no mês passado.` });
+      }
+    }
+
+    if (atual.despesas > 0 && cartoesResumo.faturaAtual > 0) {
+      const pctCartao = (cartoesResumo.faturaAtual / atual.despesas) * 100;
+      if (pctCartao >= 1) {
+        insights.push({ emoji: '💳', texto: `Seu cartão representa ${pctCartao.toFixed(0)}% das suas despesas deste mês.` });
+      }
+    }
+
+    const metaEmProgresso = metas
+      .filter((m) => m.valorMeta > 0 && m.valorAtual < m.valorMeta)
+      .map((m) => ({ ...m, pct: (m.valorAtual / m.valorMeta) * 100 }))
+      .sort((a, b) => b.pct - a.pct)[0];
+    if (metaEmProgresso && metaEmProgresso.pct >= 50) {
+      insights.push({ emoji: '🎯', texto: `Você está a ${(100 - metaEmProgresso.pct).toFixed(0)}% de atingir sua meta "${metaEmProgresso.nome}".` });
+    }
+
+    if (atual.resultado < 0) {
+      insights.push({ emoji: '⚠️', texto: `Suas despesas ficaram maiores que suas receitas este mês (${formatBRL(atual.resultado)}).` });
+    } else if (atual.receitas > 0) {
+      insights.push({ emoji: '✅', texto: `Você economizou ${formatBRL(atual.resultado)} este mês.` });
+    }
+
+    return insights.slice(0, 4);
+  },
+
   // ------------------------------------------------------------ Recorrentes
   async listRecorrentes() {
     const recorrentes = await DB.getAll('recorrentes');

@@ -3,6 +3,13 @@
 
 const PALETA = ['#0F766E', '#F59E0B', '#DC2626', '#2563EB', '#7C3AED', '#DB2777', '#16A34A', '#0891B2', '#CA8A04', '#4338CA'];
 
+// Lê as cores atuais do tema (claro/escuro) direto do CSS, para o texto dos
+// gráficos continuar legível quando o modo escuro estiver ativo.
+function corTema(variavel, fallback) {
+  const valor = getComputedStyle(document.documentElement).getPropertyValue(variavel).trim();
+  return valor || fallback;
+}
+
 function prepararCanvas(canvas) {
   const dpr = window.devicePixelRatio || 1;
   let rect = canvas.getBoundingClientRect();
@@ -34,6 +41,8 @@ function desenharBarras(canvas, dados) {
   const gap = 10;
   const barW = Math.max(14, (larguraDisponivel - gap * (n - 1)) / n);
   const areaH = h - padTop - padBottom;
+  const corTexto = corTema('--cor-texto', '#1B2422');
+  const corTextoSuave = corTema('--cor-texto-suave', '#61706C');
 
   dados.forEach((d, i) => {
     const x = padSide + i * (barW + gap);
@@ -43,12 +52,12 @@ function desenharBarras(canvas, dados) {
     roundRectPath(ctx, x, y, barW, barH, 6);
     ctx.fill();
 
-    ctx.fillStyle = '#1B2422';
+    ctx.fillStyle = corTexto;
     ctx.font = '700 11px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(formatCompacto(d.valor), x + barW / 2, y - 6);
 
-    ctx.fillStyle = '#61706C';
+    ctx.fillStyle = corTextoSuave;
     ctx.font = '600 10.5px -apple-system, sans-serif';
     const label = d.label.length > 9 ? d.label.slice(0, 8) + '…' : d.label;
     ctx.fillText(label, x + barW / 2, h - padBottom + 16);
@@ -64,7 +73,7 @@ function desenharDonut(canvas, dados) {
   const raio = Math.max(4, Math.min(w, h) / 2 - 6);
   const raioInterno = raio * 0.62;
   if (total <= 0) {
-    ctx.strokeStyle = '#E4E9E8';
+    ctx.strokeStyle = corTema('--cor-borda', '#E4E9E8');
     ctx.lineWidth = raio - raioInterno;
     ctx.beginPath();
     ctx.arc(cx, cy, (raio + raioInterno) / 2, 0, Math.PI * 2);
@@ -88,7 +97,7 @@ function desenharDonut(canvas, dados) {
   ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 
-  ctx.fillStyle = '#1B2422';
+  ctx.fillStyle = corTema('--cor-texto', '#1B2422');
   ctx.textAlign = 'center';
   ctx.font = '800 15px -apple-system, sans-serif';
   ctx.fillText(formatCompacto(total), cx, cy + 5);
@@ -127,12 +136,13 @@ function desenharLinha(canvas, pontos) {
   ctx.lineJoin = 'round';
   ctx.stroke();
 
+  const corTextoSuave = corTema('--cor-texto-suave', '#61706C');
   coords.forEach((c, i) => {
     ctx.beginPath();
     ctx.arc(c.x, c.y, 3.2, 0, Math.PI * 2);
     ctx.fillStyle = '#0F766E';
     ctx.fill();
-    ctx.fillStyle = '#61706C';
+    ctx.fillStyle = corTextoSuave;
     ctx.font = '600 10px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(pontos[i].label, c.x, h - 8);

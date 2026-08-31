@@ -17,6 +17,14 @@ Views.configuracoes = {
         <button class="btn btn-secundario mt-12" data-action="novaCategoria">➕ Nova categoria</button>
       </div>
 
+      <div class="section-title">🎨 Aparência</div>
+      <div class="card">
+        <div class="segmented">
+          <button class="${Theme.atual() === 'claro' ? 'ativo' : ''}" data-action="mudarTema" data-tema="claro">☀️ Claro</button>
+          <button class="${Theme.atual() === 'escuro' ? 'ativo' : ''}" data-action="mudarTema" data-tema="escuro">🌙 Escuro</button>
+        </div>
+      </div>
+
       <div class="section-title">🔐 Segurança</div>
       <div class="card">
         <div class="lista-item" style="border:none; padding:4px 0;">
@@ -72,6 +80,11 @@ Views.configuracoes = {
   },
 
   actions: {
+    mudarTema(el) {
+      Theme.aplicar(el.dataset.tema);
+      App.refresh();
+    },
+
     abaCategoria(el) {
       Views.configuracoes.abaCategoria = el.dataset.tipo;
       App.refresh();
@@ -175,7 +188,7 @@ Views.configuracoes = {
   },
 };
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '2.0.0';
 
 function categoriaItemHTML(c) {
   return `
