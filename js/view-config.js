@@ -20,9 +20,10 @@ Views.configuracoes = {
       <div class="section-title">🎨 Aparência</div>
       <div class="card">
         <div class="segmented">
-          <button class="${Theme.atual() === 'claro' ? 'ativo' : ''}" data-action="mudarTema" data-tema="claro">☀️ Claro</button>
           <button class="${Theme.atual() === 'escuro' ? 'ativo' : ''}" data-action="mudarTema" data-tema="escuro">🌙 Escuro</button>
+          <button class="${Theme.atual() === 'claro' ? 'ativo' : ''}" data-action="mudarTema" data-tema="claro">☀️ Claro</button>
         </div>
+        <p class="texto-suave mt-12">O modo escuro (preto + amarelo) é a identidade principal do app.</p>
       </div>
 
       <div class="section-title">🔐 Segurança</div>
@@ -188,7 +189,7 @@ Views.configuracoes = {
   },
 };
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 
 function categoriaItemHTML(c) {
   return `

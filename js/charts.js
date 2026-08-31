@@ -1,13 +1,31 @@
 // Gráficos simples desenhados em <canvas>, sem bibliotecas externas — assim
 // os relatórios continuam funcionando 100% offline, sem depender de CDN.
 
-const PALETA = ['#0F766E', '#F59E0B', '#DC2626', '#2563EB', '#7C3AED', '#DB2777', '#16A34A', '#0891B2', '#CA8A04', '#4338CA'];
+// Paleta "de apoio" para diferenciar categorias num gráfico (precisa de
+// várias cores distintas, não dá pra usar só amarelo em tudo). A primeira
+// cor muda com o tema (amarelo no escuro, teal no claro) — as demais são
+// fixas, escolhidas pra não brigar visualmente com a identidade
+// preto+amarelo nem com o teal do tema claro.
+const PALETA_APOIO = ['#F59E0B', '#60A5FA', '#F87171', '#A78BFA', '#34D399', '#F472B6', '#38BDF8', '#FBBF24'];
 
-// Lê as cores atuais do tema (claro/escuro) direto do CSS, para o texto dos
-// gráficos continuar legível quando o modo escuro estiver ativo.
+// Lê as cores atuais do tema (claro/escuro) direto do CSS, para o texto e as
+// cores dos gráficos continuarem coerentes e legíveis com o tema ativo.
 function corTema(variavel, fallback) {
   const valor = getComputedStyle(document.documentElement).getPropertyValue(variavel).trim();
   return valor || fallback;
+}
+
+function paletaAtual() {
+  return [corTema('--cor-primaria', '#FFC400'), ...PALETA_APOIO];
+}
+
+function hexParaRgba(hex, alpha) {
+  const limpo = hex.replace('#', '');
+  const bignum = parseInt(limpo.length === 3
+    ? limpo.split('').map((c) => c + c).join('')
+    : limpo, 16);
+  const r = (bignum >> 16) & 255, g = (bignum >> 8) & 255, b = bignum & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function prepararCanvas(canvas) {
@@ -48,7 +66,7 @@ function desenharBarras(canvas, dados) {
     const x = padSide + i * (barW + gap);
     const barH = Math.max(3, (d.valor / max) * areaH);
     const y = padTop + (areaH - barH);
-    ctx.fillStyle = d.cor || '#0F766E';
+    ctx.fillStyle = d.cor || corTema('--cor-primaria', '#0F766E');
     roundRectPath(ctx, x, y, barW, barH, 6);
     ctx.fill();
 
@@ -121,17 +139,19 @@ function desenharLinha(canvas, pontos) {
     y: padTop + areaH - ((p.valor - min) / range) * areaH,
   }));
 
+  const corPrimaria = corTema('--cor-primaria', '#0F766E');
+
   ctx.beginPath();
   coords.forEach((c, i) => (i === 0 ? ctx.moveTo(c.x, c.y) : ctx.lineTo(c.x, c.y)));
   ctx.lineTo(coords[coords.length - 1].x, padTop + areaH);
   ctx.lineTo(coords[0].x, padTop + areaH);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(15, 118, 110, 0.12)';
+  ctx.fillStyle = hexParaRgba(corPrimaria, 0.14);
   ctx.fill();
 
   ctx.beginPath();
   coords.forEach((c, i) => (i === 0 ? ctx.moveTo(c.x, c.y) : ctx.lineTo(c.x, c.y)));
-  ctx.strokeStyle = '#0F766E';
+  ctx.strokeStyle = corPrimaria;
   ctx.lineWidth = 2.5;
   ctx.lineJoin = 'round';
   ctx.stroke();
@@ -140,7 +160,7 @@ function desenharLinha(canvas, pontos) {
   coords.forEach((c, i) => {
     ctx.beginPath();
     ctx.arc(c.x, c.y, 3.2, 0, Math.PI * 2);
-    ctx.fillStyle = '#0F766E';
+    ctx.fillStyle = corPrimaria;
     ctx.fill();
     ctx.fillStyle = corTextoSuave;
     ctx.font = '600 10px -apple-system, sans-serif';

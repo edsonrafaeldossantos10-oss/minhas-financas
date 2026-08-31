@@ -115,8 +115,8 @@ function strokeEllipse(cv, cx, cy, rx, ry, thickness, color) {
 
 function drawIcon(size, { maskable }) {
   const cv = makeCanvas(size);
-  const bg1 = [15, 118, 110]; // teal-700
-  const bg2 = [16, 150, 129]; // teal-500
+  const bg1 = [15, 15, 15]; // quase-preto (identidade V2.1)
+  const bg2 = [26, 22, 10]; // grafite com leve calor amarelado
   // gradient background
   for (let y = 0; y < size; y++) {
     const t = y / size;
@@ -141,8 +141,8 @@ function drawIcon(size, { maskable }) {
   }
   // coins stack (gold), kept within the safe zone (center ~60%)
   const cx = size / 2, cy = size / 2;
-  const gold = [245, 197, 66, 255];
-  const goldDark = [201, 155, 34, 255];
+  const gold = [255, 196, 0, 255]; // amarelo principal da identidade V2.1
+  const goldDark = [185, 134, 0, 255];
   const coinRx = size * 0.20, coinRy = size * 0.13;
   const offsets = [0.13, 0, -0.13];
   offsets.forEach((off, idx) => {

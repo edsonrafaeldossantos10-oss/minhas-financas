@@ -52,6 +52,7 @@ Views.relatorios = {
     const maioresDespesas = Store.maioresDespesas(transacoes, 5);
     const { year, month } = currentYearMonth();
     const comparativo = await Store.resumoComparativoMes(year, month);
+    const paleta = paletaAtual();
 
     const container = document.getElementById('conteudo-relatorio');
     if (!container) return;
@@ -72,7 +73,7 @@ Views.relatorios = {
         <div class="mt-12">
           ${categoriasOrdenadas.map(([cat, valor], i) => `
             <div class="lista-item">
-              <span style="width:12px; height:12px; border-radius:4px; background:${PALETA[i % PALETA.length]}; flex-shrink:0;"></span>
+              <span style="width:12px; height:12px; border-radius:4px; background:${paleta[i % paleta.length]}; flex-shrink:0;"></span>
               <div class="info"><div class="desc">${escapeHTML(cat)}</div></div>
               <span class="valor despesa">${formatBRL(valor)}</span>
             </div>`).join('')}
@@ -141,10 +142,10 @@ Views.relatorios = {
         { label: 'Despesas', valor: despesas, cor: '#DC2626' },
       ]);
       if (categoriasOrdenadas.length) {
-        desenharDonut(document.getElementById('chart-categorias'), categoriasOrdenadas.map(([cat, valor], i) => ({ label: cat, valor, cor: PALETA[i % PALETA.length] })));
+        desenharDonut(document.getElementById('chart-categorias'), categoriasOrdenadas.map(([cat, valor], i) => ({ label: cat, valor, cor: paleta[i % paleta.length] })));
       }
       if (Object.keys(porCartao).length) {
-        desenharBarras(document.getElementById('chart-cartoes'), Object.entries(porCartao).map(([label, valor], i) => ({ label, valor, cor: PALETA[i % PALETA.length] })));
+        desenharBarras(document.getElementById('chart-cartoes'), Object.entries(porCartao).map(([label, valor], i) => ({ label, valor, cor: paleta[i % paleta.length] })));
       }
       desenharLinha(document.getElementById('chart-evolucao'), meses.map((m) => ({ label: m.label, valor: m.saldoAcumulado })));
       desenharBarras(document.getElementById('chart-gastos-mensais'), meses.map((m) => ({ label: m.label, valor: m.despesas, cor: '#DC2626' })));

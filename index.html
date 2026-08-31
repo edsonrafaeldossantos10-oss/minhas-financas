@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>💰 Minhas Finanças</title>
 <meta name="description" content="Controle financeiro pessoal simples, manual e 100% offline.">
-<meta name="theme-color" id="meta-theme-color" content="#0F766E">
+<meta name="theme-color" id="meta-theme-color" content="#0F0F0F">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,14 +16,18 @@
 <link rel="stylesheet" href="css/styles.css">
 <script>
 // Aplica o tema salvo ANTES da primeira pintura, para não haver "flash" de
-// tema claro seguido de escuro. localStorage é usado aqui de propósito (só
-// para essa preferência simples de aparência) — os dados financeiros
-// continuam inteiramente no IndexedDB, sem relação com isso.
+// tema. localStorage é usado aqui de propósito (só para essa preferência
+// simples de aparência) — os dados financeiros continuam inteiramente no
+// IndexedDB, sem relação com isso.
+//
+// V2.1: a identidade PRETO+AMARELO é o padrão (definida direto em :root,
+// sem precisar de atributo nenhum). Só precisamos marcar data-theme="claro"
+// quando a pessoa escolheu explicitamente o tema claro em Configurações.
 (function () {
   try {
     var tema = localStorage.getItem('mf_tema');
-    if (tema === 'escuro') {
-      document.documentElement.setAttribute('data-theme', 'escuro');
+    if (tema === 'claro') {
+      document.documentElement.setAttribute('data-theme', 'claro');
     }
   } catch (e) {}
 })();

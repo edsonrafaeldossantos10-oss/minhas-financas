@@ -15,6 +15,7 @@ Views.dashboard = {
     const resumo = comparativo.atual;
     const categoriasDespesa = Store.categoriasComPercentual(resumo.transacoes, 'despesa').slice(0, 5);
     const insights = Store.gerarInsights({ comparativo, categoriasDespesa, cartoesResumo, metas });
+    const paleta = paletaAtual();
 
     const proximasContas = recorrentes.filter((r) => r.status !== 'pago').slice(0, 4);
     // "Últimos lançamentos" deve mostrar o que a usuária acabou de fazer, não
@@ -84,7 +85,7 @@ Views.dashboard = {
               <span class="nome">${iconeCategoria(c.categoria)} ${escapeHTML(c.categoria)}</span>
               <span class="valores"><strong>${formatBRL(c.valor)}</strong> · ${c.pct.toFixed(0)}%</span>
             </div>
-            <div class="barra"><div class="fill" style="width:${c.pct}%; background:${PALETA_CATEGORIAS[i % PALETA_CATEGORIAS.length]}"></div></div>
+            <div class="barra"><div class="fill" style="width:${c.pct}%; background:${paleta[i % paleta.length]}"></div></div>
           </div>
         `).join('') : vazioMini('🧭', 'Cadastre despesas para ver para onde seu dinheiro está indo.')}
       </div>
@@ -105,7 +106,7 @@ Views.dashboard = {
 
       ${insights.length ? `
       <div class="section-title">💡 Análise do mês</div>
-      <div class="card">
+      <div class="card card-destaque">
         ${insights.map((i) => `<div class="insight-item"><span class="emoji">${i.emoji}</span><span>${i.texto}</span></div>`).join('')}
       </div>` : ''}
 
@@ -150,7 +151,6 @@ function vazioMini(emoji, texto) {
 
 const ICONE_TIPO = { receita: '💵', despesa: '💸', transferencia: '🔁', investimento: '📈' };
 const SINAL_TIPO = { receita: '+', despesa: '-', transferencia: '↔', investimento: '↑' };
-const PALETA_CATEGORIAS = ['#0F766E', '#F59E0B', '#DC2626', '#2563EB', '#7C3AED'];
 
 const ICONES_CATEGORIA = {
   'Alimentação': '🍔', 'Supermercado': '🛒', 'Moradia': '🏠', 'Energia': '💡', 'Água': '💧',

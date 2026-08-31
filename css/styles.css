@@ -1,7 +1,52 @@
+/* ---------------------------------------------------------------------
+   Identidade visual V2.1: PRETO + AMARELO é o tema padrão (sem precisar
+   de [data-theme] no <html>). O tema "claro" (teal/branco, a identidade
+   original) fica disponível como alternativa em
+   :root[data-theme="claro"], escolhido em Configurações > Aparência e
+   salvo em localStorage (config simples de aparência, não é dado
+   financeiro — esses continuam só no IndexedDB). Aplicado antes da
+   primeira pintura por um script inline no <head> para não haver
+   "flash" de tema.
+   --------------------------------------------------------------------- */
 :root {
+  --cor-primaria: #FFC400;
+  --cor-primaria-clara: #FFD54A;
+  --cor-primaria-escura: #B98600;
+  /* cor do texto/ícone POR CIMA de um fundo --cor-primaria (preto sobre
+     amarelo, para manter contraste e elegância — nunca branco sobre
+     amarelo). */
+  --cor-sobre-primaria: #14110A;
+  /* cor de texto/link "destacado" sobre um fundo neutro (--cor-superficie
+     ou --cor-superficie-alt) — amarelo bem legível sobre grafite escuro. */
+  --cor-texto-destaque: #FFC400;
+  --cor-pin-fundo: #141414;
+  --cor-receita: #4ADE80;
+  --cor-despesa: #F87171;
+  --cor-transferencia: #60A5FA;
+  --cor-investimento: #C4B5FD;
+  --cor-alerta: #FBBF24;
+  --cor-fundo: #0F0F0F;
+  --cor-superficie: #181818;
+  --cor-superficie-alt: #201B0A;
+  --cor-borda: #2A2A2A;
+  --cor-texto: #F5F5F3;
+  --cor-texto-suave: #ABABAB;
+  --cor-texto-fraco: #6E6E6E;
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.35);
+  --sombra-flutuante: 0 8px 22px rgba(255, 196, 0, 0.22);
+  --raio: 16px;
+  --raio-pequeno: 10px;
+  --fonte: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Tema claro — a identidade original (teal + branco), mantida como opção. */
+:root[data-theme="claro"] {
   --cor-primaria: #0F766E;
   --cor-primaria-clara: #14B8A6;
   --cor-primaria-escura: #0B5E58;
+  --cor-sobre-primaria: #FFFFFF;
+  --cor-texto-destaque: #0B5E58;
+  --cor-pin-fundo: #0B5E58;
   --cor-receita: #16A34A;
   --cor-despesa: #DC2626;
   --cor-transferencia: #2563EB;
@@ -16,35 +61,6 @@
   --cor-texto-fraco: #93A19D;
   --sombra: 0 1px 2px rgba(16, 24, 22, 0.06), 0 2px 8px rgba(16, 24, 22, 0.06);
   --sombra-flutuante: 0 8px 24px rgba(15, 118, 110, 0.28);
-  --raio: 16px;
-  --raio-pequeno: 10px;
-  --fonte: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-/* Modo escuro — ativado via [data-theme="escuro"] no <html>, escolhido em
-   Configurações > Aparência e salvo em localStorage (config simples, não é
-   dado financeiro, por isso não usa IndexedDB). Aplicado antes da primeira
-   pintura por um script inline no <head> para não haver "flash" de tema. */
-:root[data-theme="escuro"] {
-  --cor-primaria: #14B8A6;
-  --cor-primaria-clara: #2DD4BF;
-  /* --cor-primaria-escura fica igual à do modo claro de propósito: é usada
-     como fundo sólido (tela de PIN) e como sombra de clique dos botões —
-     em ambos os casos precisa continuar um teal bem escuro, não claro. */
-  --cor-receita: #4ADE80;
-  --cor-despesa: #F87171;
-  --cor-transferencia: #60A5FA;
-  --cor-investimento: #C4B5FD;
-  --cor-alerta: #FBBF24;
-  --cor-fundo: #10171A;
-  --cor-superficie: #1B2427;
-  --cor-superficie-alt: #16302D;
-  --cor-borda: #2B3538;
-  --cor-texto: #EDF2F1;
-  --cor-texto-suave: #9FB0AC;
-  --cor-texto-fraco: #6B7A77;
-  --sombra: 0 1px 2px rgba(0, 0, 0, 0.25), 0 2px 10px rgba(0, 0, 0, 0.3);
-  --sombra-flutuante: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 * { box-sizing: border-box; }
@@ -116,6 +132,10 @@ main#view {
 
 .card + .card { margin-top: 12px; }
 
+/* Card "especial" (usado na Análise do mês) — mesma estrutura de .card
+   com uma borda de destaque amarela à esquerda. */
+.card-destaque { border-left: 3px solid var(--cor-primaria); }
+
 .section-title {
   font-size: 13px;
   font-weight: 700;
@@ -129,16 +149,29 @@ main#view {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
+/* Padrão (preto+amarelo): card grafite com brilho amarelo sutil, sem
+   pintar o card inteiro de amarelo — o destaque fica no rótulo e na
+   sombra. No tema claro (override abaixo) volta a ser o card em
+   degradê teal original. */
 .kpi-saldo {
-  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-clara) 100%);
-  color: white;
+  background: linear-gradient(160deg, #1D1D1D 0%, #141414 100%);
+  border: 1px solid rgba(255, 196, 0, 0.22);
+  color: var(--cor-texto);
   border-radius: var(--raio);
   padding: 22px 20px;
   box-shadow: var(--sombra-flutuante);
 }
-.kpi-saldo .rotulo { font-size: 13px; opacity: 0.85; font-weight: 600; }
-.kpi-saldo .valor { font-size: 34px; font-weight: 800; margin-top: 4px; letter-spacing: -0.02em; }
-.kpi-saldo .sub { font-size: 12.5px; opacity: 0.85; margin-top: 10px; }
+.kpi-saldo .rotulo { font-size: 13px; font-weight: 700; color: var(--cor-primaria); }
+.kpi-saldo .valor { font-size: 34px; font-weight: 800; margin-top: 4px; letter-spacing: -0.02em; color: var(--cor-texto); }
+.kpi-saldo .sub { font-size: 12.5px; margin-top: 10px; color: var(--cor-texto-suave); }
+
+:root[data-theme="claro"] .kpi-saldo {
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-clara) 100%);
+  border: none;
+}
+:root[data-theme="claro"] .kpi-saldo .rotulo,
+:root[data-theme="claro"] .kpi-saldo .sub { color: white; opacity: 0.85; }
+:root[data-theme="claro"] .kpi-saldo .valor { color: white; }
 
 .kpi-mini {
   background: var(--cor-superficie);
@@ -197,18 +230,12 @@ main#view {
   cursor: pointer;
   width: 100%;
 }
-.btn-primario { background: var(--cor-primaria); color: white; }
+.btn-primario { background: var(--cor-primaria); color: var(--cor-sobre-primaria); }
 .btn-primario:active { background: var(--cor-primaria-escura); }
-.btn-secundario { background: var(--cor-superficie-alt); color: var(--cor-primaria-escura); border: 1px solid #CFEFEA; }
+.btn-secundario { background: var(--cor-superficie-alt); color: var(--cor-texto-destaque); border: 1px solid var(--cor-borda); }
 .btn-perigo { background: #FEE2E2; color: #B91C1C; }
-.btn-texto { background: none; color: var(--cor-primaria-escura); padding: 10px; font-weight: 700; }
+.btn-texto { background: none; color: var(--cor-texto-destaque); padding: 10px; font-weight: 700; }
 .btn-outline { background: var(--cor-superficie); color: var(--cor-texto); border: 1px solid var(--cor-borda); }
-:root[data-theme="escuro"] .btn-secundario,
-:root[data-theme="escuro"] .btn-texto,
-:root[data-theme="escuro"] a.link-suave {
-  color: var(--cor-primaria-clara);
-}
-:root[data-theme="escuro"] .btn-secundario { border-color: rgba(45, 212, 191, 0.35); }
 .btn-sm { padding: 9px 12px; font-size: 13.5px; border-radius: 10px; width: auto; }
 .btn-bloco { display: block; width: 100%; text-align: left; }
 
@@ -241,7 +268,7 @@ main#view {
   font-size: 13.5px; font-weight: 600; background: var(--cor-superficie); color: var(--cor-texto-suave);
   cursor: pointer;
 }
-.chip.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: white; }
+.chip.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: var(--cor-sobre-primaria); }
 
 .toggle-tipo { display: flex; background: var(--cor-fundo); border-radius: 14px; padding: 4px; gap: 4px; }
 .toggle-tipo button {
@@ -270,7 +297,7 @@ main#view {
 #bottom-nav button.ativo { color: var(--cor-primaria); }
 #bottom-nav button.fab {
   background: var(--cor-primaria);
-  color: white;
+  color: var(--cor-sobre-primaria);
   border-radius: 16px;
   margin-top: -18px;
   box-shadow: var(--sombra-flutuante);
@@ -332,7 +359,7 @@ main#view {
   white-space: nowrap; padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--cor-borda);
   background: var(--cor-superficie); font-size: 13px; font-weight: 700; color: var(--cor-texto-suave);
 }
-.tabs button.ativo { background: var(--cor-texto); color: white; border-color: var(--cor-texto); }
+.tabs button.ativo { background: var(--cor-primaria); color: var(--cor-sobre-primaria); border-color: var(--cor-primaria); }
 
 .linha-mensal { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .linha-mensal button.icon-btn { background: var(--cor-superficie); border: 1px solid var(--cor-borda); width: 34px; height: 34px; border-radius: 10px; }
@@ -347,17 +374,17 @@ main#view {
 }
 .calendario-grid .dia.fora-mes { opacity: 0.35; }
 .calendario-grid .dia.hoje { border-color: var(--cor-primaria); }
-.calendario-grid .dia.selecionado { background: var(--cor-primaria); color: white; }
+.calendario-grid .dia.selecionado { background: var(--cor-primaria); color: var(--cor-sobre-primaria); }
 .calendario-grid .dia .dots { display: flex; gap: 2px; margin-top: 2px; }
 .calendario-grid .dia .dots span { width: 4px; height: 4px; border-radius: 50%; }
 
 .pin-tela {
-  position: fixed; inset: 0; background: var(--cor-primaria-escura); z-index: 100;
+  position: fixed; inset: 0; background: var(--cor-pin-fundo); z-index: 100;
   display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; gap: 24px;
 }
 .pin-dots { display: flex; gap: 14px; }
 .pin-dots span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.6); }
-.pin-dots span.preenchido { background: white; }
+.pin-dots span.preenchido { background: var(--cor-primaria); border-color: var(--cor-primaria); }
 .pin-teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 260px; }
 .pin-teclado button {
   aspect-ratio: 1; border-radius: 50%; border: none; background: rgba(255,255,255,0.12); color: white;
@@ -365,7 +392,7 @@ main#view {
 }
 .pin-teclado button:active { background: rgba(255,255,255,0.25); }
 
-a.link-suave { color: var(--cor-primaria-escura); font-weight: 700; text-decoration: none; }
+a.link-suave { color: var(--cor-texto-destaque); font-weight: 700; text-decoration: none; }
 
 .texto-suave { color: var(--cor-texto-suave); font-size: 13.5px; }
 .texto-centro { text-align: center; }
@@ -406,7 +433,11 @@ a.link-suave { color: var(--cor-primaria-escura); font-weight: 700; text-decorat
 }
 .insight-item:last-child { border-bottom: none; padding-bottom: 0; }
 .insight-item:first-child { padding-top: 0; }
-.insight-item .emoji { font-size: 16px; flex-shrink: 0; }
+.insight-item .emoji {
+  width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+  background: color-mix(in srgb, var(--cor-primaria) 16%, transparent);
+}
 
 .selo-resultado {
   display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700;
