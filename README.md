@@ -149,6 +149,29 @@ são completamente independentes do código do app.
 
 ---
 
+## Novidades da V2.1
+
+Nova identidade visual: **preto + amarelo** passou a ser o tema padrão do
+app (antes era um teal claro). O tema original (teal + branco) continua
+disponível em Configurações → Aparência → ☀️ Claro, para quem preferir.
+
+- Fundo grafite/preto, cards em grafite, amarelo como cor de destaque
+  (botão "+", itens ativos do menu, barras de progresso, abas
+  selecionadas, gráficos, ícone do PIN).
+- O botão "+" e outros elementos com fundo amarelo usam texto/ícone
+  **preto** (não branco) para manter contraste e elegância.
+- Card de saldo redesenhado: grafite com borda e brilho amarelo sutil,
+  em vez de pintar o card inteiro de amarelo.
+- Card "Análise do mês" ganhou uma borda de destaque amarela.
+- Ícone do app (tela inicial do Android) atualizado para fundo
+  grafite/preto com as moedas douradas.
+- Correção real encontrada nessa atualização: a aba selecionada em
+  Relatórios/Histórico usava uma combinação de cores que ficava quase
+  ilegível no tema escuro anterior — corrigido para usar a cor de
+  destaque do tema.
+- Nenhuma mudança na estrutura de dados: só CSS, ícones e pequenos
+  ajustes de JS para os gráficos acompanharem a cor do tema atual.
+
 ## Novidades da V2.0
 
 - Dashboard: card de Resultado do mês com selo positivo/negativo, resumo
