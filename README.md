@@ -16,14 +16,12 @@ neste mesmo link em 1-2 minutos.
 
 ---
 
-## 1. Como publicar uma atualização (se quiser mudar algo no futuro)
+## 1. Publicar uma cópia própria em outra plataforma (opcional)
 
-O app já está publicado (link acima). Caso queira usar outra plataforma no
-lugar, ou publicar uma cópia própria, o caminho mais simples sem CLI é o
-Netlify Drop, descrito abaixo — mas isso é opcional, não é mais necessário
-para o link atual.
-usando o **Netlify Drop** (arrastar-e-soltar, sem precisar criar conta
-para o primeiro teste):
+O app já está publicado (link acima) e se atualiza sozinho a cada `git
+push` (veja a seção 7). Isso aqui só é necessário se você quiser publicar
+uma cópia separada em outro lugar, usando o **Netlify Drop**
+(arrastar-e-soltar, sem precisar criar conta para o primeiro teste):
 
 1. Acesse **https://app.netlify.com/drop** no computador.
 2. Abra a pasta `minhas-financas` (esta pasta) no seu explorador de
@@ -140,8 +138,8 @@ Quando você quiser publicar uma nova versão do app (correção, nova
 funcionalidade):
 
 1. Edite os arquivos necessários.
-2. Abra `service-worker.js` e troque `CACHE_VERSION = 'v1'` para
-   `'v2'` (e assim por diante a cada nova publicação).
+2. Abra `service-worker.js` e troque o valor de `CACHE_VERSION` para o
+   próximo (ex.: `'v2'` → `'v3'`) a cada nova publicação.
 3. Rode `git add -A && git commit -m "..." && git push` nesta pasta — o
    GitHub Pages republica automaticamente no mesmo link em 1-2 minutos.
 
@@ -151,33 +149,56 @@ são completamente independentes do código do app.
 
 ---
 
+## Novidades da V2.0
+
+- Dashboard: card de Resultado do mês com selo positivo/negativo, resumo
+  consolidado de cartões (fatura, limite, próxima fatura), seção "Para
+  onde seu dinheiro está indo" (categorias com % e barra), comparação com
+  o mês anterior e "Análise do mês" com insights automáticos — tudo
+  calculado só a partir dos dados já cadastrados, sem inventar nada.
+- Atalho "💳 Compra no cartão" no lançamento rápido (abre a despesa já
+  com forma de pagamento = crédito).
+- Modo claro/escuro (Configurações → Aparência), com os gráficos dos
+  relatórios se adaptando ao tema automaticamente.
+- Relatórios: filtros de Trimestre e Semestre, lista de maiores despesas
+  do período, comparação mensal.
+- Correções: um lançamento recente clicado no Dashboard agora abre para
+  edição (antes não fazia nada); "Últimos lançamentos" agora mostra o
+  que foi lançado mais recentemente, em vez de ordenar por data da
+  parcela (o que fazia parcelas futuras de compras parceladas
+  esconderem lançamentos de hoje); um modal aberto (ex: o seletor "+")
+  agora fecha sozinho se a navegação mudar por trás dele.
+- Nenhuma store do banco local foi removida nem teve a versão alterada —
+  todos os dados cadastrados antes da V2.0 continuam intactos.
+
 ## Testes realizados durante o desenvolvimento
 
 Todos os testes abaixo foram executados manualmente no navegador antes
-da entrega:
+da entrega, incluindo verificação ao vivo no link público já publicado:
 
-- ✅ Cadastro de receita → saldo atualizado corretamente
-- ✅ Cadastro de despesa → saldo atualizado corretamente
+- ✅ Cadastro de receita → saldo, Dashboard e relatórios atualizados
+- ✅ Cadastro de despesa → saldo, Dashboard, categoria e histórico
+  atualizados
 - ✅ Compra parcelada no cartão (6x) → 6 parcelas geradas automaticamente
   nos meses corretos, limite do cartão calculado certo
 - ✅ Conta recorrente → status Pago/Próximo/Vencido calculado
   corretamente, inclusive pagando antes do vencimento
-- ✅ Meta → criação, adicionar valor, progresso (%) calculado certo
+- ✅ Meta → criação, adicionar valor, progresso (%) calculado certo,
+  refletido no insight "Você está a X% de atingir sua meta"
 - ✅ Fechar e reabrir o app → dados continuam salvos (IndexedDB)
 - ✅ Exportar backup → apagar dados → importar backup → dados restaurados
-  com sucesso
+  com sucesso (testado antes e depois da atualização para V2.0)
 - ✅ PIN de acesso → bloqueio, rejeição de PIN incorreto, desbloqueio com
   PIN correto
 - ✅ Relatórios, calendário, histórico com busca e filtros
+- ✅ Modo claro/escuro, inclusive contraste dos gráficos
+- ✅ **Atualização de V1 para V2 sem perda de dados** — testado de fato:
+  os mesmos dados cadastrados antes da atualização continuaram intactos
+  e corretos depois de todo o código ser trocado
+- ✅ Service Worker confirmado ativo e cache atualizado (`v1` → `v2`) no
+  link público real, servido via HTTPS pelo GitHub Pages
 
-**Limitação conhecida do ambiente de teste**: o navegador de teste usado
-durante o desenvolvimento roda em um ambiente controlado que às vezes
-bloqueia o registro do Service Worker (usado para cache offline dos
-arquivos do app). O código do Service Worker segue o padrão-ouro
-recomendado para PWAs e deve registrar normalmente no Google Chrome real
-do Android, servido via HTTPS pelo Netlify — isso é o comportamento
-padrão esperado. De qualquer forma, vale confirmar depois de publicado:
-abra o app, desligue o Wi-Fi/dados, feche e reabra — se os dados e a
-navegação continuarem funcionando, está tudo certo (o armazenamento dos
-dados em si, no IndexedDB, funciona offline independentemente do Service
-Worker).
+O app funciona sem internet: nenhuma parte do código faz chamadas de
+rede além de carregar os próprios arquivos do app (cacheados pelo
+Service Worker) — todos os dados são lidos e gravados localmente no
+IndexedDB, que não depende de conexão.
