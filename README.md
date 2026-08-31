@@ -5,14 +5,23 @@ ficam salvos **só no celular** (IndexedDB do navegador) — não há conexão
 com bancos, cartões, Pix ou Open Finance, e nenhum dado é enviado para
 nenhum servidor.
 
-Este projeto está pronto. Falta só publicar (passo 1 abaixo) para gerar o
-link público.
+## 🔗 Link público (já publicado)
+
+**https://edsonrafaeldossantos10-oss.github.io/minhas-financas/**
+
+Publicado via GitHub Pages a partir deste repositório
+(`edsonrafaeldossantos10-oss/minhas-financas`, branch `main`). Sempre que a
+branch `main` for atualizada, o GitHub republica automaticamente o app
+neste mesmo link em 1-2 minutos.
 
 ---
 
-## 1. Como publicar (gerar o link público)
+## 1. Como publicar uma atualização (se quiser mudar algo no futuro)
 
-Você escolheu publicar você mesmo, sem CLI — é o jeito mais simples,
+O app já está publicado (link acima). Caso queira usar outra plataforma no
+lugar, ou publicar uma cópia própria, o caminho mais simples sem CLI é o
+Netlify Drop, descrito abaixo — mas isso é opcional, não é mais necessário
+para o link atual.
 usando o **Netlify Drop** (arrastar-e-soltar, sem precisar criar conta
 para o primeiro teste):
 
@@ -133,8 +142,8 @@ funcionalidade):
 1. Edite os arquivos necessários.
 2. Abra `service-worker.js` e troque `CACHE_VERSION = 'v1'` para
    `'v2'` (e assim por diante a cada nova publicação).
-3. Publique novamente (arraste a pasta atualizada de novo no Netlify, ou
-   faça o deploy pela conta criada).
+3. Rode `git add -A && git commit -m "..." && git push` nesta pasta — o
+   GitHub Pages republica automaticamente no mesmo link em 1-2 minutos.
 
 Isso garante que o celular baixe os arquivos novos do app, mas **os
 dados financeiros (IndexedDB) nunca são apagados nesse processo** — eles
