@@ -58,9 +58,23 @@ const Store = {
     return this.competenciaDaFatura(todayISODate(), diaFechamento);
   },
 
-  vencimentoDaCompetencia(competencia, diaVencimento) {
+  // V3 (correção): a fatura da competência M fecha no dia de fechamento de M.
+  // Se o dia de vencimento é MENOR ou IGUAL ao de fechamento (ex.: fecha dia
+  // 25, vence dia 5), o vencimento cai no mês SEGUINTE — antes o app
+  // mostrava o vencimento antes mesmo da fatura fechar.
+  vencimentoDaCompetencia(competencia, diaVencimento, diaFechamento) {
+    let [y, m] = competencia.split('-').map(Number);
+    let mesIdx = m - 1;
+    if (diaFechamento && Number(diaVencimento) <= Number(diaFechamento)) {
+      mesIdx += 1;
+      if (mesIdx > 11) { mesIdx = 0; y += 1; }
+    }
+    return isoDateForYearMonthDay(y, mesIdx, Math.min(diaVencimento, daysInMonth(y, mesIdx)));
+  },
+
+  rotuloCompetencia(competencia) {
     const [y, m] = competencia.split('-').map(Number);
-    return isoDateForYearMonthDay(y, m - 1, Math.min(diaVencimento, daysInMonth(y, m - 1)));
+    return monthLabel(y, m - 1);
   },
 
   async listCartoes() {
@@ -80,23 +94,33 @@ const Store = {
       porCompetencia[comp] = (porCompetencia[comp] || 0) + t.valor;
     }
 
-    const faturaAtual = porCompetencia[competenciaAberta] || 0;
+    // fatura atual já marcada como paga (pagamento antecipado) conta como zero
+    const faturaAtual = faturasPagas.has(competenciaAberta) ? 0 : (porCompetencia[competenciaAberta] || 0);
     const limiteUtilizado = Object.entries(porCompetencia)
       .filter(([comp]) => !faturasPagas.has(comp))
       .reduce((sum, [, v]) => sum + v, 0);
 
+    // V3 (correção): faturas que JÁ FECHARAM e ainda não foram pagas também
+    // aparecem (antes sumiam da tela assim que o mês virava e não havia como
+    // marcá-las como pagas).
     const proximasCompetencias = Object.keys(porCompetencia)
-      .filter((c) => c >= competenciaAberta && !faturasPagas.has(c))
+      .filter((c) => !faturasPagas.has(c) && porCompetencia[c] > 0)
       .sort()
       .map((comp) => ({
         competencia: comp,
         valor: porCompetencia[comp],
-        vencimento: this.vencimentoDaCompetencia(comp, cartao.diaVencimento),
+        vencimento: this.vencimentoDaCompetencia(comp, cartao.diaVencimento, cartao.diaFechamento),
         aberta: comp === competenciaAberta,
+        fechada: comp < competenciaAberta,
+        status: comp < competenciaAberta ? 'fechada' : comp === competenciaAberta ? 'aberta' : 'futura',
       }));
+    const faturaFechada = proximasCompetencias
+      .filter((f) => f.fechada)
+      .reduce((s, f) => s + f.valor, 0);
 
     return {
       faturaAtual,
+      faturaFechada,
       limiteUtilizado,
       limiteDisponivel: Math.max(0, (Number(cartao.limite) || 0) - limiteUtilizado),
       competenciaAberta,
@@ -118,19 +142,33 @@ const Store = {
     await DB.put('cartoes', { ...cartao, faturasPagas: [...faturasPagas] });
 
     if (valor > 0 && contaId) {
+      // pagamentoFatura: true → abate o saldo da conta, mas NÃO entra como
+      // "despesa do mês" (as compras do cartão já foram contadas uma vez,
+      // no dia da compra). Antes o mesmo gasto era contado duas vezes.
       await DB.put('transacoes', {
         id: uid(),
         tipo: 'despesa',
-        descricao: `Pagamento fatura ${cartao.nome} (${competencia})`,
+        descricao: `Pagamento fatura ${cartao.nome} (${this.rotuloCompetencia(competencia)})`,
         valor,
         data: todayISODate(),
         categoria: 'Faturas',
         contaId,
         formaPagamento: 'debito',
+        pagamentoFatura: true,
+        cartaoPagoId: cartaoId,
+        competenciaPaga: competencia,
         observacao: '',
         criadoEm: nowISO(),
       });
     }
+  },
+
+  async desmarcarFaturaPaga(cartaoId, competencia) {
+    const cartao = await DB.get('cartoes', cartaoId);
+    if (!cartao) return;
+    const faturasPagas = (cartao.faturasPagas || []).filter((c) => c !== competencia);
+    await DB.put('cartoes', { ...cartao, faturasPagas });
+    await DB.deleteWhere('transacoes', (t) => t.pagamentoFatura && t.cartaoPagoId === cartaoId && t.competenciaPaga === competencia);
   },
 
   // ------------------------------------------------------------ Categorias
@@ -203,9 +241,13 @@ const Store = {
   async atualizarLancamento(id, dados) {
     const atual = await DB.get('transacoes', id);
     if (!atual) throw new Error('Lançamento não encontrado.');
+    // V3 (correção): ao editar uma parcela, mantém o "(3/10)" no fim da
+    // descrição — antes ele era perdido ao salvar.
+    let descricao = dados.descricao.trim();
+    if (atual.parcela) descricao = `${descricao} (${atual.parcela.numero}/${atual.parcela.total})`;
     const atualizado = {
       ...atual,
-      descricao: dados.descricao.trim(),
+      descricao,
       valor: Number(dados.valor),
       data: dados.data,
       categoria: dados.categoria || null,
@@ -253,39 +295,30 @@ const Store = {
     const fim = isoDateForYearMonthDay(year, month, daysInMonth(year, month));
     const transacoes = await this.listTransacoes({ inicio, fim });
     const receitas = transacoes.filter((t) => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
-    const despesasDinheiro = transacoes
-      .filter((t) => t.tipo === 'despesa' && t.formaPagamento !== 'credito')
+    const despesasReais = transacoes.filter(ehDespesaReal);
+    const despesasDinheiro = despesasReais
+      .filter((t) => t.formaPagamento !== 'credito')
       .reduce((s, t) => s + t.valor, 0);
-    const despesasCredito = transacoes
-      .filter((t) => t.tipo === 'despesa' && t.formaPagamento === 'credito')
+    const despesasCredito = despesasReais
+      .filter((t) => t.formaPagamento === 'credito')
       .reduce((s, t) => s + t.valor, 0);
     const despesas = despesasDinheiro + despesasCredito;
     const investimentos = transacoes.filter((t) => t.tipo === 'investimento').reduce((s, t) => s + t.valor, 0);
-    return { receitas, despesas, investimentos, resultado: receitas - despesas, transacoes };
-  },
-
-  async totalFaturasAbertas() {
-    const cartoes = await this.listCartoes();
-    const transacoes = await DB.getAll('transacoes');
-    let total = 0;
-    for (const cartao of cartoes) {
-      const resumo = await this.resumoCartao(cartao, transacoes);
-      total += resumo.faturaAtual;
-    }
-    return total;
+    return { receitas, despesas, despesasCredito, investimentos, resultado: receitas - despesas, transacoes };
   },
 
   // --------------------------------------------------- V2: visão consolidada
   async resumoCartoesConsolidado() {
     const cartoes = await this.listCartoes();
     const transacoes = await DB.getAll('transacoes');
-    let limiteTotal = 0, limiteUtilizado = 0, faturaAtual = 0;
+    let limiteTotal = 0, limiteUtilizado = 0, faturaAtual = 0, faturaFechada = 0;
     let proxima = null;
     for (const cartao of cartoes) {
       const resumo = await this.resumoCartao(cartao, transacoes);
       limiteTotal += Number(cartao.limite) || 0;
       limiteUtilizado += resumo.limiteUtilizado;
       faturaAtual += resumo.faturaAtual;
+      faturaFechada += resumo.faturaFechada;
       resumo.proximasFaturas.forEach((f) => {
         if (f.valor > 0 && (!proxima || f.vencimento < proxima.vencimento)) {
           proxima = { ...f, cartao: cartao.nome };
@@ -299,6 +332,7 @@ const Store = {
       limiteDisponivel: Math.max(0, limiteTotal - limiteUtilizado),
       pctUtilizado: limiteTotal > 0 ? (limiteUtilizado / limiteTotal) * 100 : 0,
       faturaAtual,
+      faturaFechada,
       proximaFatura: proxima,
     };
   },
@@ -306,7 +340,7 @@ const Store = {
   categoriasComPercentual(transacoes, tipo = 'despesa') {
     const porCategoria = {};
     let total = 0;
-    transacoes.filter((t) => t.tipo === tipo).forEach((t) => {
+    transacoes.filter((t) => t.tipo === tipo && !ehPagamentoFatura(t)).forEach((t) => {
       const cat = t.categoria || 'Outros';
       porCategoria[cat] = (porCategoria[cat] || 0) + t.valor;
       total += t.valor;
@@ -318,7 +352,7 @@ const Store = {
 
   maioresDespesas(transacoes, limit = 5) {
     return transacoes
-      .filter((t) => t.tipo === 'despesa')
+      .filter(ehDespesaReal)
       .sort((a, b) => b.valor - a.valor)
       .slice(0, limit);
   },
@@ -363,11 +397,14 @@ const Store = {
       }
     }
 
-    if (atual.despesas > 0 && cartoesResumo.faturaAtual > 0) {
-      const pctCartao = (cartoesResumo.faturaAtual / atual.despesas) * 100;
+    if (atual.despesas > 0 && atual.despesasCredito > 0) {
+      const pctCartao = (atual.despesasCredito / atual.despesas) * 100;
       if (pctCartao >= 1) {
-        insights.push({ emoji: '💳', texto: `Seu cartão representa ${pctCartao.toFixed(0)}% das suas despesas deste mês.` });
+        insights.push({ emoji: '💳', texto: `Compras no cartão representam ${pctCartao.toFixed(0)}% das suas despesas deste mês.` });
       }
+    }
+    if (cartoesResumo.pctUtilizado >= 80) {
+      insights.push({ emoji: '⚠️', texto: `Você já usou ${cartoesResumo.pctUtilizado.toFixed(0)}% do limite total dos cartões.` });
     }
 
     const metaEmProgresso = metas
@@ -398,13 +435,18 @@ const Store = {
     const hojeISO = isoDateForYearMonthDay(y, m, d);
 
     if (recorrente.periodicidade === 'anual') {
-      const [, mm, dd] = (recorrente.dataBase || `${y}-01-01`).split('-').map(Number);
-      let venc = isoDateForYearMonthDay(y, mm - 1, dd);
-      if (venc < hojeISO) venc = isoDateForYearMonthDay(y + 1, mm - 1, dd);
+      // V3 (correção): usa o mês escolhido + o dia de vencimento informado.
+      // Antes usava a data em que a conta foi salva, ignorando o dia digitado.
+      const mesBase = recorrente.mesVencimento
+        || Number((recorrente.dataBase || `${y}-01-01`).split('-')[1]);
+      const dia = (ano) => Math.min(Number(recorrente.diaVencimento) || 1, daysInMonth(ano, mesBase - 1));
+      let venc = isoDateForYearMonthDay(y, mesBase - 1, dia(y));
+      if (venc < hojeISO) venc = isoDateForYearMonthDay(y + 1, mesBase - 1, dia(y + 1));
       return venc;
     }
     if (recorrente.periodicidade === 'semanal') {
-      const diaSemana = Number(recorrente.diaVencimento) % 7;
+      // diaSemana: 0 = domingo … 6 = sábado
+      const diaSemana = recorrente.diaSemana != null ? Number(recorrente.diaSemana) : Number(recorrente.diaVencimento) % 7;
       const hojeSemana = refDate.getDay();
       let diff = diaSemana - hojeSemana;
       if (diff < 0) diff += 7;
@@ -446,13 +488,13 @@ const Store = {
     }).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   },
 
-  async pagarRecorrente(recorrenteId, contaId, data) {
+  async pagarRecorrente(recorrenteId, contaId, data, valor) {
     const r = await DB.get('recorrentes', recorrenteId);
     if (!r) throw new Error('Conta recorrente não encontrada.');
     await this.criarLancamento({
       tipo: 'despesa',
       descricao: r.descricao,
-      valor: r.valor,
+      valor: valor || r.valor,
       data: data || todayISODate(),
       categoria: r.categoria,
       contaId,
@@ -475,4 +517,21 @@ const Store = {
     const valorAtual = Math.max(0, (Number(meta.valorAtual) || 0) + valorDelta);
     await DB.put('metas', { ...meta, valorAtual, historico });
   },
+
+  // --------------------------------------------------------------- Perfil
+  async nomeUsuario() {
+    const cfg = await DB.get('configuracoes', 'nome_usuario');
+    return (cfg && cfg.valor) || '';
+  },
 };
+
+// Pagamento de fatura: tira dinheiro da conta, mas não é um "gasto novo"
+// (as compras já foram contadas no cartão). Reconhece também pagamentos
+// gravados por versões antigas do app.
+function ehPagamentoFatura(t) {
+  return !!(t.pagamentoFatura || (t.categoria === 'Faturas' && /^Pagamento fatura/.test(t.descricao || '')));
+}
+
+function ehDespesaReal(t) {
+  return t.tipo === 'despesa' && !ehPagamentoFatura(t);
+}

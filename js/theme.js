@@ -29,7 +29,7 @@ const Theme = {
       document.documentElement.removeAttribute('data-theme');
     }
     const meta = document.getElementById('meta-theme-color');
-    if (meta) meta.setAttribute('content', claro ? '#0F766E' : '#0F0F0F');
+    if (meta) meta.setAttribute('content', claro ? '#F5F3EE' : '#09090B');
     try {
       localStorage.setItem(this.CHAVE, claro ? 'claro' : 'escuro');
     } catch (e) {}

@@ -154,6 +154,16 @@ const DB = {
     };
   },
 
+  // Apaga TODOS os dados do app (lançamentos, contas, cartões, metas,
+  // categorias, PIN…). Só é chamado por ação explícita da pessoa, com
+  // confirmação digitada — nunca automaticamente em atualização.
+  async wipeAll() {
+    for (const storeName of Object.keys(STORES)) {
+      await this.clear(storeName);
+    }
+    try { localStorage.removeItem('mf_ocultar'); } catch (e) {}
+  },
+
   async importAll(payload) {
     if (!payload || payload.appId !== 'minhas-financas' || !payload.dados) {
       throw new Error('Arquivo de backup inválido.');

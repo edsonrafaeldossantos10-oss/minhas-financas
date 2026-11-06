@@ -1,33 +1,34 @@
 Views.cartoes = {
-  titulo: 'Meus Cartões',
+  titulo: 'Cartões',
 
   async render() {
     const cartoes = await Store.listCartoes();
     const transacoes = await DB.getAll('transacoes');
     if (!cartoes.length) {
-      return `${vazioMini('💳', 'Nenhum cartão cadastrado ainda.')}
-        <button class="btn btn-secundario mt-16" data-action="novoCartao">➕ Novo cartão</button>`;
+      return `
+        <div class="card">${vazioMini('💳', 'Nenhum cartão cadastrado ainda.<br>Cadastre seus cartões para controlar faturas, limite e compras parceladas.')}</div>
+        <button class="btn btn-primario mt-16" data-action="novoCartao">${icon('mais', 18)} Adicionar cartão</button>`;
     }
     const linhas = await Promise.all(cartoes.map(async (c) => {
       const r = await Store.resumoCartao(c, transacoes);
       const pct = c.limite > 0 ? Math.min(100, (r.limiteUtilizado / c.limite) * 100) : 0;
       return `
-        <div class="card" data-action="abrirCartao" data-id="${c.id}" style="cursor:pointer;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div class="cc clicavel" data-action="abrirCartao" data-id="${c.id}" style="cursor:pointer;">
+          <div class="cc-topo">
             <div>
-              <div style="font-weight:700; font-size:15px;">💳 ${escapeHTML(c.nome)}</div>
-              <div class="texto-suave mt-8">${escapeHTML(c.banco || '')}</div>
+              <div class="cc-nome">${escapeHTML(c.nome)}</div>
+              <div class="cc-banco">${escapeHTML(c.banco || 'Cartão de crédito')} · fecha dia ${c.diaFechamento} · vence dia ${c.diaVencimento}</div>
             </div>
-            <div style="text-align:right;">
-              <div class="texto-suave">Fatura atual</div>
-              <div style="font-weight:800; font-size:17px;">${formatBRL(r.faturaAtual)}</div>
-            </div>
+            <span class="chip-cc"></span>
           </div>
-          <div class="progress-bar mt-12"><div class="fill" style="width:${pct}%; background:${pct > 85 ? 'var(--cor-despesa)' : 'var(--cor-primaria)'}"></div></div>
-          <div class="texto-suave mt-8">Limite usado ${formatBRL(r.limiteUtilizado)} de ${formatBRL(c.limite)} · Disponível ${formatBRL(r.limiteDisponivel)}</div>
+          <div class="cc-rotulo">Fatura atual</div>
+          <div class="cc-valor sensivel">${formatBRL(r.faturaAtual)}</div>
+          <div class="cc-barra"><div class="fill" style="width:${pct}%; ${pct > 85 ? 'background:#FF6B81' : ''}"></div></div>
+          <div class="cc-rodape"><span>Disponível <strong class="sensivel">${formatBRL(r.limiteDisponivel)}</strong></span><span>Limite ${formatBRL(c.limite)}</span></div>
+          ${r.faturaFechada > 0 ? `<div class="cc-rodape" style="color:#FFB547; margin-top:10px;"><span>Fatura fechada a pagar</span><strong>${formatBRL(r.faturaFechada)}</strong></div>` : ''}
         </div>`;
     }));
-    return linhas.join('') + `<button class="btn btn-secundario mt-16" data-action="novoCartao">➕ Novo cartão</button>`;
+    return linhas.join('') + `<button class="btn btn-secundario mt-16" data-action="novoCartao">${icon('mais', 18)} Adicionar cartão</button>`;
   },
 
   actions: {
@@ -40,37 +41,41 @@ Views.cartoes = {
       <form data-modal-form="salvarCartaoModal" data-editando="${cartao ? cartao.id : ''}">
         <div class="folha-topo">
           <h2>${cartao ? 'Editar cartão' : 'Novo cartão'}</h2>
-          <button type="button" class="fechar" data-close-modal>✕</button>
+          <button type="button" class="fechar" data-close-modal>${icon('fechar', 16)}</button>
         </div>
         <div class="campo">
           <label>Nome do cartão</label>
-          <input type="text" name="nome" required placeholder="Ex: Nubank" value="${cartao ? escapeHTML(cartao.nome) : ''}">
+          <input type="text" name="nome" required placeholder="Ex: Nubank Roxinho" value="${cartao ? escapeHTML(cartao.nome) : ''}">
         </div>
         <div class="campo">
-          <label>Banco</label>
+          <label>Banco (opcional)</label>
           <input type="text" name="banco" placeholder="Ex: Nubank" value="${cartao ? escapeHTML(cartao.banco || '') : ''}">
         </div>
         <div class="campo">
           <label>Limite total</label>
-          <input type="text" inputmode="decimal" name="limite" required placeholder="R$ 0,00" value="${cartao ? Number(cartao.limite).toFixed(2).replace('.', ',') : ''}">
+          <input type="text" inputmode="decimal" name="limite" required placeholder="0,00" value="${cartao ? valorParaInput(cartao.limite) : ''}">
         </div>
         <div class="linha-campos">
           <div class="campo">
-            <label>Dia de fechamento</label>
-            <input type="number" name="diaFechamento" min="1" max="31" required value="${cartao ? cartao.diaFechamento : ''}">
+            <label>Dia que fecha</label>
+            <input type="number" inputmode="numeric" name="diaFechamento" min="1" max="31" required value="${cartao ? cartao.diaFechamento : ''}">
           </div>
           <div class="campo">
-            <label>Dia de vencimento</label>
-            <input type="number" name="diaVencimento" min="1" max="31" required value="${cartao ? cartao.diaVencimento : ''}">
+            <label>Dia que vence</label>
+            <input type="number" inputmode="numeric" name="diaVencimento" min="1" max="31" required value="${cartao ? cartao.diaVencimento : ''}">
           </div>
         </div>
-        <button type="submit" class="btn btn-primario mt-8">💾 Salvar</button>
+        <div class="texto-fraco mb-12">Compras feitas depois do dia de fechamento entram na fatura do mês seguinte.</div>
+        <button type="submit" class="btn btn-primario">${icon('check', 18)} Salvar cartão</button>
       </form>
     `, { id: 'form-cartao' });
 
     window.__modalHandlers = window.__modalHandlers || {};
     window.__modalHandlers.salvarCartaoModal = async (form) => {
       const fd = new FormData(form);
+      const diaF = Number(fd.get('diaFechamento'));
+      const diaV = Number(fd.get('diaVencimento'));
+      if (!(diaF >= 1 && diaF <= 31) || !(diaV >= 1 && diaV <= 31)) { App.toast('Dias devem estar entre 1 e 31.'); return; }
       const id = form.dataset.editando || uid();
       const anterior = form.dataset.editando ? await DB.get('cartoes', id) : null;
       await DB.put('cartoes', {
@@ -78,8 +83,8 @@ Views.cartoes = {
         nome: fd.get('nome').trim(),
         banco: fd.get('banco').trim(),
         limite: parseValorInput(fd.get('limite')),
-        diaFechamento: Number(fd.get('diaFechamento')),
-        diaVencimento: Number(fd.get('diaVencimento')),
+        diaFechamento: diaF,
+        diaVencimento: diaV,
         faturasPagas: anterior ? anterior.faturasPagas || [] : [],
         criadoEm: anterior ? anterior.criadoEm : nowISO(),
       });
@@ -92,51 +97,73 @@ Views.cartoes = {
 
 Views['cartao-detalhe'] = {
   titulo: 'Cartão',
+  competenciaVista: null,
 
   async render(params) {
     const cartao = await DB.get('cartoes', params.id);
-    if (!cartao) { App.navigate('cartoes'); return ''; }
+    if (!cartao) { setTimeout(() => App.navigate('cartoes'), 0); return ''; }
     const transacoes = await DB.getAll('transacoes');
     const resumo = await Store.resumoCartao(cartao, transacoes);
-    const despesasFaturaAtual = transacoes
+    if (this.cartaoVisto !== cartao.id) { this.competenciaVista = null; this.cartaoVisto = cartao.id; }
+    const competencia = this.competenciaVista || resumo.competenciaAberta;
+    const despesasDaFatura = transacoes
       .filter((t) => t.tipo === 'despesa' && t.cartaoId === cartao.id &&
-        Store.competenciaDaFatura(t.data, cartao.diaFechamento) === resumo.competenciaAberta)
+        Store.competenciaDaFatura(t.data, cartao.diaFechamento) === competencia)
       .sort((a, b) => b.data.localeCompare(a.data));
-    const contas = await Store.listContas();
+    const totalFatura = despesasDaFatura.reduce((s, t) => s + t.valor, 0);
+    const pct = cartao.limite > 0 ? Math.min(100, (resumo.limiteUtilizado / cartao.limite) * 100) : 0;
+    const paga = (cartao.faturasPagas || []).includes(competencia);
 
     return `
-      <div class="card">
-        <div style="font-weight:800; font-size:17px;">💳 ${escapeHTML(cartao.nome)}</div>
-        <div class="texto-suave mt-8">${escapeHTML(cartao.banco || '')} · Fecha dia ${cartao.diaFechamento} · Vence dia ${cartao.diaVencimento}</div>
-        <div class="grid-2 mt-16">
-          <div class="kpi-mini"><div class="rotulo">Limite total</div><div class="valor">${formatBRL(cartao.limite)}</div></div>
-          <div class="kpi-mini"><div class="rotulo">Disponível</div><div class="valor">${formatBRL(resumo.limiteDisponivel)}</div></div>
+      <div class="cc">
+        <div class="cc-topo">
+          <div>
+            <div class="cc-nome">${escapeHTML(cartao.nome)}</div>
+            <div class="cc-banco">${escapeHTML(cartao.banco || 'Cartão de crédito')} · fecha dia ${cartao.diaFechamento} · vence dia ${cartao.diaVencimento}</div>
+          </div>
+          <span class="chip-cc"></span>
         </div>
-        <div class="progress-bar mt-12"><div class="fill" style="width:${cartao.limite > 0 ? Math.min(100, (resumo.limiteUtilizado / cartao.limite) * 100) : 0}%"></div></div>
-        <div class="texto-suave mt-8">Usado: ${formatBRL(resumo.limiteUtilizado)}</div>
-        <div style="display:flex; gap:8px;" class="mt-16">
-          <button class="btn btn-outline btn-sm" data-action="editar">✏️ Editar</button>
-          <button class="btn btn-perigo btn-sm" data-action="excluir">🗑️ Excluir</button>
-        </div>
+        <div class="cc-rotulo">Limite disponível</div>
+        <div class="cc-valor sensivel">${formatBRL(resumo.limiteDisponivel)}</div>
+        <div class="cc-barra"><div class="fill" style="width:${pct}%; ${pct > 85 ? 'background:#FF6B81' : ''}"></div></div>
+        <div class="cc-rodape"><span>Usado ${formatBRL(resumo.limiteUtilizado)}</span><span>Limite ${formatBRL(cartao.limite)}</span></div>
+      </div>
+      <div class="linha-botoes mt-12">
+        <button class="btn btn-secundario btn-sm" data-action="editar">${icon('editar', 16)} Editar</button>
+        <button class="btn btn-perigo btn-sm" data-action="excluir">${icon('lixo', 16)} Excluir</button>
       </div>
 
-      <div class="section-title">Próximas faturas</div>
+      <div class="section-title">Faturas em aberto</div>
       <div class="card">
         ${resumo.proximasFaturas.length ? resumo.proximasFaturas.map((f) => `
-          <div class="lista-item">
-            <span class="icone-tipo despesa">🧾</span>
+          <div class="lista-item" data-action="verFatura" data-comp="${f.competencia}">
+            <span class="icone-tipo ${f.fechada ? 'despesa' : 'neutro'}">${icon('recibo', 18)}</span>
             <div class="info">
-              <div class="desc">${f.aberta ? 'Fatura atual (aberta)' : 'Fatura ' + f.competencia}</div>
-              <div class="meta">Vence em ${formatDateBR(f.vencimento)}</div>
+              <div class="desc">${Store.rotuloCompetencia(f.competencia)}</div>
+              <div class="meta">Vence ${formatDateBR(f.vencimento)}</div>
             </div>
-            <span class="valor despesa">${formatBRL(f.valor)}</span>
+            <div style="text-align:right;">
+              <div class="valor despesa sensivel">${formatBRL(f.valor)}</div>
+              <span class="badge ${f.status}" style="margin-top:4px;">${{ fechada: 'Fechada', aberta: 'Aberta', futura: 'Futura' }[f.status]}</span>
+            </div>
           </div>
-        `).join('') + `<button class="btn btn-secundario mt-12" data-action="pagarFatura">✅ Marcar fatura atual como paga</button>` : vazioMini('✨', 'Nenhuma fatura em aberto.')}
+        `).join('') : vazioMini('✨', 'Nenhuma fatura em aberto.')}
       </div>
 
-      <div class="section-title">Compras da fatura atual</div>
+      <div class="secao-topo">Fatura de ${Store.rotuloCompetencia(competencia)}
+        ${competencia !== resumo.competenciaAberta ? `<button class="link" data-action="verFatura" data-comp="${resumo.competenciaAberta}">Ver atual</button>` : ''}
+      </div>
       <div class="card">
-        ${despesasFaturaAtual.length ? despesasFaturaAtual.map(itemLancamentoHTML).join('') : vazioMini('🧾', 'Nenhuma compra nesta fatura ainda.')}
+        <div class="resultado-linha mb-8">
+          <div>
+            <div class="texto-fraco">Total da fatura · vence ${formatDateBR(Store.vencimentoDaCompetencia(competencia, cartao.diaVencimento, cartao.diaFechamento))}</div>
+            <div class="valor-grande sensivel">${formatBRL(totalFatura)}</div>
+          </div>
+          ${paga ? `<span class="badge pago">Paga</span>` : ''}
+        </div>
+        ${totalFatura > 0 && !paga ? `<button class="btn btn-primario mb-12" data-action="pagarFatura" data-comp="${competencia}">${icon('check', 18)} Marcar esta fatura como paga</button>` : ''}
+        ${paga ? `<button class="btn btn-outline btn-sm mb-12" data-action="desfazerPagamento" data-comp="${competencia}">Desfazer pagamento</button>` : ''}
+        ${despesasDaFatura.length ? despesasDaFatura.map(itemLancamentoHTML).join('') : vazioMini('🧾', 'Nenhuma compra nesta fatura.')}
       </div>
     `;
   },
@@ -144,33 +171,50 @@ Views['cartao-detalhe'] = {
   actions: {
     editar() { DB.get('cartoes', App.current.params.id).then((c) => Views.cartoes.abrirForm(c)); },
 
+    verFatura(el) {
+      Views['cartao-detalhe'].competenciaVista = el.dataset.comp;
+      App.refresh();
+    },
+
     async excluir() {
       const id = App.current.params.id;
       const transacoes = await Store.listTransacoes({ cartaoId: id });
       if (transacoes.length > 0) {
-        App.toast('Não é possível excluir: existem compras vinculadas a este cartão.');
+        App.toast('Não é possível excluir: existem compras neste cartão.');
         return;
       }
-      const ok = await App.confirmar('Excluir este cartão?', { perigo: true, textoBotao: 'Excluir' });
+      const ok = await App.confirmar('Excluir este cartão?', { titulo: 'Excluir cartão', perigo: true, textoBotao: 'Excluir' });
       if (!ok) return;
       await DB.delete('cartoes', id);
       App.navigate('cartoes');
     },
 
-    async pagarFatura() {
+    async desfazerPagamento(el) {
+      const ok = await App.confirmar('A fatura volta a ficar em aberto e o lançamento de pagamento é removido da conta.', { titulo: 'Desfazer pagamento', textoBotao: 'Desfazer' });
+      if (!ok) return;
+      await Store.desmarcarFaturaPaga(App.current.params.id, el.dataset.comp);
+      App.toast('Pagamento desfeito.');
+      App.refresh();
+    },
+
+    async pagarFatura(el) {
       const cartaoId = App.current.params.id;
+      const competencia = el.dataset.comp;
       const cartao = await DB.get('cartoes', cartaoId);
-      const resumo = await Store.resumoCartao(cartao, await DB.getAll('transacoes'));
-      if (resumo.faturaAtual <= 0) { App.toast('Não há valor em aberto nesta fatura.'); return; }
+      const valor = (await DB.getAll('transacoes'))
+        .filter((t) => t.tipo === 'despesa' && t.cartaoId === cartaoId && Store.competenciaDaFatura(t.data, cartao.diaFechamento) === competencia)
+        .reduce((s, t) => s + t.valor, 0);
+      if (valor <= 0) { App.toast('Não há valor nesta fatura.'); return; }
       const contas = await Store.listContas();
       App.showModal(`
-        <div class="folha-topo"><h2>Pagar fatura</h2><button type="button" class="fechar" data-close-modal>✕</button></div>
-        <p class="texto-suave mb-8">Valor da fatura atual: <strong>${formatBRL(resumo.faturaAtual)}</strong></p>
+        <div class="folha-topo"><h2>Pagar fatura</h2><button type="button" class="fechar" data-close-modal>${icon('fechar', 16)}</button></div>
+        <p class="texto-suave mb-12">Fatura de <strong>${Store.rotuloCompetencia(competencia)}</strong>: <strong>${formatBRL(valor)}</strong></p>
         <div class="campo">
-          <label>Pagar com qual conta?</label>
+          <label>Pago com qual conta?</label>
           <select id="select-conta-pagamento">
             ${contas.map((c) => `<option value="${c.id}">${escapeHTML(c.nome)}</option>`).join('')}
           </select>
+          <div class="ajuda">O valor sai do saldo dessa conta. Não conta de novo como despesa do mês — as compras já foram contadas.</div>
         </div>
         <button class="btn btn-primario mt-8" data-modal-action="confirmarPagamentoFatura">Confirmar pagamento</button>
       `, { id: 'pagar-fatura-modal', centered: true });
@@ -178,7 +222,7 @@ Views['cartao-detalhe'] = {
       window.__modalHandlers = window.__modalHandlers || {};
       window.__modalHandlers.confirmarPagamentoFatura = async () => {
         const contaId = document.getElementById('select-conta-pagamento').value;
-        await Store.marcarFaturaPaga(cartaoId, resumo.competenciaAberta, contaId);
+        await Store.marcarFaturaPaga(cartaoId, competencia, contaId);
         App.closeModal('pagar-fatura-modal');
         App.toast('Fatura marcada como paga.');
         App.refresh();

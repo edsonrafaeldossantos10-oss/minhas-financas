@@ -5,6 +5,20 @@ function formatBRL(valor) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Valor numérico → texto para preencher um campo de dinheiro ("1.234,50").
+function valorParaInput(valor) {
+  const n = Number(valor);
+  if (!n) return '';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function saudacaoDoHorario() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
 function parseValorInput(str) {
   if (typeof str === 'number') return str;
   if (!str) return 0;

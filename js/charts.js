@@ -6,7 +6,7 @@
 // cor muda com o tema (amarelo no escuro, teal no claro) — as demais são
 // fixas, escolhidas pra não brigar visualmente com a identidade
 // preto+amarelo nem com o teal do tema claro.
-const PALETA_APOIO = ['#F59E0B', '#60A5FA', '#F87171', '#A78BFA', '#34D399', '#F472B6', '#38BDF8', '#FBBF24'];
+const PALETA_APOIO = ['#6CA8FF', '#FF6B81', '#B49CFF', '#3DD598', '#F59E8B', '#5ED3E6', '#F4A3C8', '#C9B27C'];
 
 // Lê as cores atuais do tema (claro/escuro) direto do CSS, para o texto e as
 // cores dos gráficos continuarem coerentes e legíveis com o tema ativo.
@@ -16,7 +16,7 @@ function corTema(variavel, fallback) {
 }
 
 function paletaAtual() {
-  return [corTema('--cor-primaria', '#FFC400'), ...PALETA_APOIO];
+  return [corTema('--cor-ouro', '#E6B94C'), ...PALETA_APOIO];
 }
 
 function hexParaRgba(hex, alpha) {
@@ -139,7 +139,7 @@ function desenharLinha(canvas, pontos) {
     y: padTop + areaH - ((p.valor - min) / range) * areaH,
   }));
 
-  const corPrimaria = corTema('--cor-primaria', '#0F766E');
+  const corPrimaria = corTema('--cor-ouro', '#E6B94C');
 
   ctx.beginPath();
   coords.forEach((c, i) => (i === 0 ? ctx.moveTo(c.x, c.y) : ctx.lineTo(c.x, c.y)));

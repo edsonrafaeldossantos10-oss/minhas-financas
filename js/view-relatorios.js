@@ -31,10 +31,12 @@ Views.relatorios = {
     const { inicio, fim } = this.intervaloAtual();
     const transacoes = await Store.listTransacoes({ inicio, fim });
     const receitas = transacoes.filter((t) => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
-    const despesas = transacoes.filter((t) => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
+    const despesas = transacoes.filter(ehDespesaReal).reduce((s, t) => s + t.valor, 0);
+    const corReceita = corTema('--cor-receita', '#3DD598');
+    const corDespesa = corTema('--cor-despesa', '#FF6B81');
 
     const porCategoria = {};
-    transacoes.filter((t) => t.tipo === 'despesa').forEach((t) => {
+    transacoes.filter(ehDespesaReal).forEach((t) => {
       const cat = t.categoria || 'Outros';
       porCategoria[cat] = (porCategoria[cat] || 0) + t.valor;
     });
@@ -99,8 +101,8 @@ Views.relatorios = {
       <div class="card">
         ${categoriasOrdenadas.slice(0, 5).map(([cat, valor], i) => `
           <div class="lista-item">
-            <span class="icone-tipo despesa">${i + 1}º</span>
-            <div class="info"><div class="desc">${escapeHTML(cat)}</div></div>
+            <span class="icone-tipo neutro">${iconeCategoria(cat)}</span>
+            <div class="info"><div class="desc">${i + 1}º · ${escapeHTML(cat)}</div></div>
             <span class="valor despesa">${formatBRL(valor)}</span>
           </div>`).join('') || vazioMini('🏆', 'Sem dados suficientes ainda.')}
       </div>
@@ -109,7 +111,7 @@ Views.relatorios = {
       <div class="card">
         ${maioresDespesas.length ? maioresDespesas.map((t, i) => `
           <div class="lista-item">
-            <span class="icone-tipo despesa">${i + 1}º</span>
+            <span class="icone-tipo neutro" style="font-weight:700; font-size:13px;">${i + 1}º</span>
             <div class="info"><div class="desc">${escapeHTML(t.descricao)}</div><div class="meta">${formatDateBR(t.data)}${t.categoria ? ' · ' + escapeHTML(t.categoria) : ''}</div></div>
             <span class="valor despesa">${formatBRL(t.valor)}</span>
           </div>`).join('') : vazioMini('🏆', 'Sem despesas neste período.')}
@@ -128,7 +130,7 @@ Views.relatorios = {
         </div>
         ${comparativo.anterior.despesas > 0 ? `
         <div class="comparativo-box ${comparativo.deltaDespesasPct <= 0 ? 'positivo' : 'negativo'}">
-          <span class="selo">${comparativo.deltaDespesasPct <= 0 ? '🟢' : '🔴'}</span>
+          <span class="selo">${icon(comparativo.deltaDespesasPct <= 0 ? 'receita' : 'despesa', 18)}</span>
           <span class="texto">Você gastou <strong>${Math.abs(comparativo.deltaDespesasPct).toFixed(1)}% ${comparativo.deltaDespesasPct <= 0 ? 'menos' : 'mais'}</strong> que no mês passado.</span>
         </div>` : ''}
       </div>
@@ -138,8 +140,8 @@ Views.relatorios = {
     // canvases recém-inseridos antes de medirmos o tamanho deles para desenhar.
     requestAnimationFrame(() => {
       desenharBarras(document.getElementById('chart-receitas-despesas'), [
-        { label: 'Receitas', valor: receitas, cor: '#16A34A' },
-        { label: 'Despesas', valor: despesas, cor: '#DC2626' },
+        { label: 'Receitas', valor: receitas, cor: corReceita },
+        { label: 'Despesas', valor: despesas, cor: corDespesa },
       ]);
       if (categoriasOrdenadas.length) {
         desenharDonut(document.getElementById('chart-categorias'), categoriasOrdenadas.map(([cat, valor], i) => ({ label: cat, valor, cor: paleta[i % paleta.length] })));
@@ -148,7 +150,7 @@ Views.relatorios = {
         desenharBarras(document.getElementById('chart-cartoes'), Object.entries(porCartao).map(([label, valor], i) => ({ label, valor, cor: paleta[i % paleta.length] })));
       }
       desenharLinha(document.getElementById('chart-evolucao'), meses.map((m) => ({ label: m.label, valor: m.saldoAcumulado })));
-      desenharBarras(document.getElementById('chart-gastos-mensais'), meses.map((m) => ({ label: m.label, valor: m.despesas, cor: '#DC2626' })));
+      desenharBarras(document.getElementById('chart-gastos-mensais'), meses.map((m) => ({ label: m.label, valor: m.despesas, cor: corDespesa })));
     });
   },
 

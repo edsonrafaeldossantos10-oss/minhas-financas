@@ -1,33 +1,32 @@
 Views.calendario = {
-  titulo: 'Calendário',
+  titulo: 'Agenda',
   ano: currentYearMonth().year,
   mes: currentYearMonth().month,
   selecionado: todayISODate(),
 
   async render() {
     const { ano, mes } = this;
-    const transacoes = await Store.listTransacoes({
-      inicio: isoDateForYearMonthDay(ano, mes, 1),
-      fim: isoDateForYearMonthDay(ano, mes, daysInMonth(ano, mes)),
-    });
-    const recorrentes = await Store.listRecorrentesComStatus();
-    const cartoes = await Store.listCartoes();
+    const prefixoMes = `${ano}-${pad2(mes + 1)}`;
+    const [transacoes, recorrentes, cartoes, todas] = await Promise.all([
+      Store.listTransacoes({
+        inicio: isoDateForYearMonthDay(ano, mes, 1),
+        fim: isoDateForYearMonthDay(ano, mes, daysInMonth(ano, mes)),
+      }),
+      Store.listRecorrentesComStatus(),
+      Store.listCartoes(),
+      DB.getAll('transacoes'),
+    ]);
 
     const eventosPorDia = {};
-    transacoes.forEach((t) => {
-      (eventosPorDia[t.data] = eventosPorDia[t.data] || []).push({ cor: corDoTipo(t.tipo), origem: 'lancamento', item: t });
-    });
+    const add = (data, ev) => { (eventosPorDia[data] = eventosPorDia[data] || []).push(ev); };
+    transacoes.forEach((t) => add(t.data, { cor: corDoTipo(t.tipo), origem: 'lancamento', item: t }));
     recorrentes.forEach((r) => {
-      if (r.vencimento.slice(0, 7) === `${ano}-${pad2(mes + 1)}`) {
-        (eventosPorDia[r.vencimento] = eventosPorDia[r.vencimento] || []).push({ cor: '#D97706', origem: 'recorrente', item: r });
-      }
+      if (r.vencimento.slice(0, 7) === prefixoMes) add(r.vencimento, { cor: 'var(--cor-alerta)', origem: 'recorrente', item: r });
     });
     for (const c of cartoes) {
-      const resumo = await Store.resumoCartao(c, await DB.getAll('transacoes'));
+      const resumo = await Store.resumoCartao(c, todas);
       resumo.proximasFaturas.forEach((f) => {
-        if (f.vencimento.slice(0, 7) === `${ano}-${pad2(mes + 1)}`) {
-          (eventosPorDia[f.vencimento] = eventosPorDia[f.vencimento] || []).push({ cor: '#7C3AED', origem: 'fatura', item: { ...f, cartao: c.nome } });
-        }
+        if (f.vencimento.slice(0, 7) === prefixoMes) add(f.vencimento, { cor: 'var(--cor-ouro)', origem: 'fatura', item: { ...f, cartao: c.nome } });
       });
     }
 
@@ -38,12 +37,13 @@ Views.calendario = {
     for (let d = 1; d <= totalDias; d++) celulas.push(d);
 
     const hoje = todayISODate();
+    const eventosSel = eventosPorDia[this.selecionado] || [];
 
     return `
       <div class="linha-mensal">
-        <button class="icon-btn" data-action="mesAnterior">←</button>
+        <button class="icon-btn" data-action="mesAnterior" aria-label="Mês anterior">${icon('esquerda', 18)}</button>
         <div class="mes-atual">${monthLabel(ano, mes)}</div>
-        <button class="icon-btn" data-action="proximoMes">→</button>
+        <button class="icon-btn" data-action="proximoMes" aria-label="Próximo mês">${icon('direita', 18)}</button>
       </div>
       <div class="card">
         <div class="calendario-grid">
@@ -59,11 +59,17 @@ Views.calendario = {
             </div>`;
           }).join('')}
         </div>
+        <div class="linha-botoes mt-12 texto-fraco" style="gap:14px;">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cor-alerta)"></span> Conta fixa</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cor-ouro)"></span> Fatura</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cor-despesa)"></span> Despesa</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cor-receita)"></span> Receita</span>
+        </div>
       </div>
 
-      <div class="section-title">${formatDateLongBR(this.selecionado)}</div>
+      <div class="section-title">${rotuloDia(this.selecionado)}</div>
       <div class="card">
-        ${(eventosPorDia[this.selecionado] || []).length ? (eventosPorDia[this.selecionado] || []).map((e) => eventoHTML(e)).join('') : vazioMini('📭', 'Nada por aqui neste dia.')}
+        ${eventosSel.length ? eventosSel.map((e) => eventoHTML(e)).join('') : vazioMini('📭', 'Nada marcado neste dia.')}
       </div>
     `;
   },
@@ -83,28 +89,27 @@ Views.calendario = {
       Views.calendario.selecionado = el.dataset.data;
       App.refresh();
     },
-    abrirLancamento(el) {
-      App.navigate('lancar', { id: el.dataset.id });
-    },
+    abrirRecorrentes() { App.navigate('recorrentes'); },
+    abrirCartoes() { App.navigate('cartoes'); },
   },
 };
 
 function corDoTipo(tipo) {
-  return { receita: '#16A34A', despesa: '#DC2626', transferencia: '#2563EB', investimento: '#7C3AED' }[tipo];
+  return { receita: 'var(--cor-receita)', despesa: 'var(--cor-despesa)', transferencia: 'var(--cor-transferencia)', investimento: 'var(--cor-investimento)' }[tipo];
 }
 
 function eventoHTML(e) {
   if (e.origem === 'lancamento') return itemLancamentoHTML(e.item);
   if (e.origem === 'recorrente') {
-    return `<div class="lista-item">
-      <span class="icone-tipo despesa">📅</span>
-      <div class="info"><div class="desc">${escapeHTML(e.item.descricao)}</div><div class="meta">Conta fixa · vence hoje</div></div>
-      <span class="badge ${e.item.status}">${{ pago: 'Pago', proximo: 'Próximo', vencido: 'Vencido', futuro: 'Futuro' }[e.item.status]}</span>
+    return `<div class="lista-item" data-action="abrirRecorrentes">
+      <span class="icone-tipo despesa">${icon('repetir', 18)}</span>
+      <div class="info"><div class="desc">${escapeHTML(e.item.descricao)}</div><div class="meta">Conta fixa · ${formatBRL(e.item.valor)}</div></div>
+      <span class="badge ${e.item.status}">${rotuloStatus(e.item.status)}</span>
     </div>`;
   }
-  return `<div class="lista-item">
-    <span class="icone-tipo investimento">💳</span>
+  return `<div class="lista-item" data-action="abrirCartoes">
+    <span class="icone-tipo ouro">${icon('cartao', 18)}</span>
     <div class="info"><div class="desc">Fatura ${escapeHTML(e.item.cartao)}</div><div class="meta">Vencimento da fatura</div></div>
-    <span class="valor investimento">${formatBRL(e.item.valor)}</span>
+    <span class="valor despesa sensivel">${formatBRL(e.item.valor)}</span>
   </div>`;
 }

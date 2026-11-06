@@ -1,31 +1,43 @@
 Views.metas = {
-  titulo: 'Minhas Metas',
+  titulo: 'Metas',
 
   async render() {
     const metas = await Store.listMetas();
     return `
       ${metas.length ? metas.map((m) => {
         const pct = Math.min(100, Math.round((m.valorAtual / (m.valorMeta || 1)) * 100));
+        const falta = Math.max(0, (m.valorMeta || 0) - (m.valorAtual || 0));
+        let porMes = '';
+        if (m.prazo && falta > 0) {
+          const hoje = new Date();
+          const [py, pm] = m.prazo.split('-').map(Number);
+          const meses = (py - hoje.getFullYear()) * 12 + (pm - 1 - hoje.getMonth()) + 1;
+          if (meses > 0) porMes = `Guardando <strong>${formatBRL(falta / meses)}</strong> por mês você chega lá.`;
+          else porMes = 'O prazo desta meta já passou.';
+        }
         return `
         <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:700; font-size:15.5px;">🎯 ${escapeHTML(m.nome)}</div>
-            ${m.prazo ? `<span class="texto-suave">até ${formatDateBR(m.prazo)}</span>` : ''}
+          <div class="lista-item" style="padding:0; border:none;">
+            <span class="icone-tipo ouro">${icon('meta', 19)}</span>
+            <div class="info">
+              <div class="desc">${escapeHTML(m.nome)}</div>
+              <div class="meta">${m.prazo ? `Até ${formatDateBR(m.prazo)}` : 'Sem prazo definido'}</div>
+            </div>
+            <span class="badge ${pct >= 100 ? 'pago' : 'futuro'}">${pct >= 100 ? 'Concluída 🎉' : pct + '%'}</span>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:13.5px;">
-            <span class="texto-suave">Guardado: <strong style="color:var(--cor-texto)">${formatBRL(m.valorAtual)}</strong></span>
-            <span class="texto-suave">Meta: ${formatBRL(m.valorMeta)}</span>
+          <div class="resultado-linha mt-12">
+            <div><span class="sensivel" style="font-weight:750; font-size:20px; letter-spacing:-0.02em;">${formatBRL(m.valorAtual)}</span> <span class="texto-fraco">de ${formatBRL(m.valorMeta)}</span></div>
           </div>
           <div class="progress-bar mt-8"><div class="fill" style="width:${pct}%"></div></div>
-          <div class="texto-suave mt-8">${pct}% concluído</div>
-          <div style="display:flex; gap:8px;" class="mt-12">
-            <button class="btn btn-secundario btn-sm" data-action="adicionar" data-id="${m.id}">➕ Adicionar</button>
-            <button class="btn btn-outline btn-sm" data-action="retirar" data-id="${m.id}">➖ Retirar</button>
-            <button class="btn btn-outline btn-sm" data-action="editar" data-id="${m.id}">✏️</button>
+          ${porMes ? `<div class="texto-suave mt-8">${porMes}</div>` : ''}
+          <div class="linha-botoes mt-12">
+            <button class="btn btn-primario btn-sm" data-action="adicionar" data-id="${m.id}">${icon('mais', 16)} Guardar</button>
+            <button class="btn btn-outline btn-sm" data-action="retirar" data-id="${m.id}">Retirar</button>
+            <button class="btn btn-outline btn-sm" data-action="editar" data-id="${m.id}" aria-label="Editar">${icon('editar', 16)}</button>
           </div>
         </div>`;
-      }).join('') : vazioMini('🎯', 'Nenhuma meta criada ainda. Que tal começar uma viagem dos sonhos?')}
-      <button class="btn btn-secundario mt-16" data-action="nova">➕ Nova meta</button>
+      }).join('') : `<div class="card">${vazioMini('🎯', 'Nenhuma meta ainda.<br>Que tal começar pela reserva de emergência ou aquela viagem dos sonhos?')}</div>`}
+      <button class="btn btn-secundario mt-16" data-action="nova">${icon('mais', 18)} Nova meta</button>
     `;
   },
 
@@ -38,13 +50,16 @@ Views.metas = {
 
   abrirAjuste(metaId, sinal) {
     App.showModal(`
-      <div class="folha-topo"><h2>${sinal > 0 ? 'Adicionar à meta' : 'Retirar da meta'}</h2><button type="button" class="fechar" data-close-modal>✕</button></div>
-      <div class="campo">
-        <label>Valor</label>
-        <input type="text" inputmode="decimal" id="valor-ajuste-meta" placeholder="R$ 0,00">
-      </div>
-      <button class="btn btn-primario mt-8" data-modal-action="confirmarAjusteMeta">Confirmar</button>
+      <form data-modal-form="confirmarAjusteMeta">
+        <div class="folha-topo"><h2>${sinal > 0 ? 'Guardar na meta' : 'Retirar da meta'}</h2><button type="button" class="fechar" data-close-modal>${icon('fechar', 16)}</button></div>
+        <div class="campo valor-grande">
+          <label>Valor</label>
+          <input type="text" inputmode="decimal" id="valor-ajuste-meta" placeholder="0,00" autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primario mt-8">Confirmar</button>
+      </form>
     `, { id: 'ajuste-meta-modal', centered: true });
+    setTimeout(() => document.getElementById('valor-ajuste-meta')?.focus(), 60);
 
     window.__modalHandlers = window.__modalHandlers || {};
     window.__modalHandlers.confirmarAjusteMeta = async () => {
@@ -62,39 +77,43 @@ Views.metas = {
       <form data-modal-form="salvarMetaModal" data-editando="${meta ? meta.id : ''}">
         <div class="folha-topo">
           <h2>${meta ? 'Editar meta' : 'Nova meta'}</h2>
-          <button type="button" class="fechar" data-close-modal>✕</button>
+          <button type="button" class="fechar" data-close-modal>${icon('fechar', 16)}</button>
         </div>
         <div class="campo">
           <label>Nome da meta</label>
-          <input type="text" name="nome" required placeholder="Ex: Viagem" value="${meta ? escapeHTML(meta.nome) : ''}">
+          <input type="text" name="nome" required placeholder="Ex: Reserva de emergência" value="${meta ? escapeHTML(meta.nome) : ''}">
         </div>
-        <div class="campo">
-          <label>Valor da meta</label>
-          <input type="text" inputmode="decimal" name="valorMeta" required placeholder="R$ 0,00" value="${meta ? Number(meta.valorMeta).toFixed(2).replace('.', ',') : ''}">
+        <div class="linha-campos">
+          <div class="campo">
+            <label>Quanto quer juntar?</label>
+            <input type="text" inputmode="decimal" name="valorMeta" required placeholder="0,00" value="${meta ? valorParaInput(meta.valorMeta) : ''}">
+          </div>
+          ${!meta ? `
+          <div class="campo">
+            <label>Já tem guardado</label>
+            <input type="text" inputmode="decimal" name="valorAtual" placeholder="0,00">
+          </div>` : ''}
         </div>
-        ${!meta ? `
-        <div class="campo">
-          <label>Valor já guardado (opcional)</label>
-          <input type="text" inputmode="decimal" name="valorAtual" placeholder="R$ 0,00">
-        </div>` : ''}
         <div class="campo">
           <label>Prazo (opcional)</label>
           <input type="date" name="prazo" value="${meta && meta.prazo ? meta.prazo : ''}">
         </div>
-        <button type="submit" class="btn btn-primario mt-8">💾 Salvar</button>
-        ${meta ? `<button type="button" class="btn btn-perigo mt-8" data-modal-action="excluirMetaModal">🗑️ Excluir meta</button>` : ''}
+        <button type="submit" class="btn btn-primario mt-8">${icon('check', 18)} Salvar meta</button>
+        ${meta ? `<button type="button" class="btn btn-perigo mt-8" data-modal-action="excluirMetaModal">${icon('lixo', 18)} Excluir meta</button>` : ''}
       </form>
     `, { id: 'form-meta' });
 
     window.__modalHandlers = window.__modalHandlers || {};
     window.__modalHandlers.salvarMetaModal = async (form) => {
       const fd = new FormData(form);
+      const valorMeta = parseValorInput(fd.get('valorMeta'));
+      if (!valorMeta || valorMeta <= 0) { App.toast('Informe o valor da meta.'); return; }
       const id = form.dataset.editando || uid();
       const existente = form.dataset.editando ? await DB.get('metas', id) : null;
       await DB.put('metas', {
         id,
         nome: fd.get('nome').trim(),
-        valorMeta: parseValorInput(fd.get('valorMeta')),
+        valorMeta,
         valorAtual: existente ? existente.valorAtual : parseValorInput(fd.get('valorAtual') || '0'),
         prazo: fd.get('prazo') || null,
         historico: existente ? existente.historico || [] : [],
@@ -105,7 +124,7 @@ Views.metas = {
       App.refresh();
     };
     window.__modalHandlers.excluirMetaModal = async () => {
-      const ok = await App.confirmar('Excluir esta meta?', { perigo: true, textoBotao: 'Excluir' });
+      const ok = await App.confirmar('Excluir esta meta?', { titulo: 'Excluir meta', perigo: true, textoBotao: 'Excluir' });
       if (!ok) return;
       await DB.delete('metas', meta.id);
       App.closeModal('form-meta');

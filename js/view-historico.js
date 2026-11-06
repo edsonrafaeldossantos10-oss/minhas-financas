@@ -7,9 +7,10 @@ Views.historico = {
     if (params.foco === 'busca') this.filtro.abrirBusca = true;
 
     return `
-      <div class="card">
-        <input type="text" placeholder="🔎 Pesquisar por descrição, categoria…" value="${escapeHTML(this.filtro.busca)}"
-          data-oninput="buscar" id="input-busca" style="width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--cor-borda); font-size:14.5px;">
+      <div class="busca-wrap">
+        ${icon('busca', 18)}
+        <input type="search" class="input" placeholder="Buscar por descrição, categoria…" value="${escapeHTML(this.filtro.busca)}"
+          data-oninput="buscar" id="input-busca" autocomplete="off">
       </div>
 
       <div class="tabs mt-12">
@@ -18,12 +19,12 @@ Views.historico = {
         `).join('')}
       </div>
       <div class="tabs mt-8">
-        ${[['', 'Todos'], ['receita', '🟢 Receitas'], ['despesa', '🔴 Despesas'], ['transferencia', '🔵 Transferências'], ['investimento', '🟣 Investimentos']].map(([v, l]) => `
+        ${[['', 'Todos'], ['despesa', 'Despesas'], ['receita', 'Receitas'], ['transferencia', 'Transferências'], ['investimento', 'Investimentos']].map(([v, l]) => `
           <button class="${this.filtro.tipo === v ? 'ativo' : ''}" data-action="filtrarTipo" data-tipo="${v}">${l}</button>
         `).join('')}
       </div>
 
-      <div class="mt-16" id="lista-resultados">${await this.htmlResultados()}</div>
+      <div class="mt-8" id="lista-resultados">${await this.htmlResultados()}</div>
     `;
   },
 
@@ -34,12 +35,19 @@ Views.historico = {
       tipo: this.filtro.tipo || undefined,
       busca: this.filtro.busca || undefined,
     });
+    if (transacoes.length === 0) return `<div class="card mt-12">${vazioMini('🔎', 'Nenhum lançamento encontrado com esses filtros.')}</div>`;
+    const entradas = transacoes.filter((t) => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
+    const saidas = transacoes.filter(ehDespesaReal).reduce((s, t) => s + t.valor, 0);
     const grupos = agruparPorData(transacoes);
-    if (transacoes.length === 0) return vazioMini('🧾', 'Nenhum lançamento encontrado com esses filtros.');
-    return Object.entries(grupos).map(([data, itens]) => `
-      <div class="section-title">${formatDateLongBR(data)}</div>
-      <div class="card">${itens.map(itemLancamentoHTML).join('')}</div>
-    `).join('');
+    return `
+      <div class="grid-2 mt-12">
+        <div class="kpi-mini receita"><div class="rotulo">Entradas</div><div class="valor sensivel">${formatBRL(entradas)}</div></div>
+        <div class="kpi-mini despesa"><div class="rotulo">Saídas</div><div class="valor sensivel">${formatBRL(saidas)}</div></div>
+      </div>
+      ${Object.entries(grupos).map(([data, itens]) => `
+        <div class="section-title">${rotuloDia(data)}</div>
+        <div class="card">${itens.map(itemLancamentoHTML).join('')}</div>
+      `).join('')}`;
   },
 
   async atualizarResultados() {
@@ -58,7 +66,8 @@ Views.historico = {
   actions: {
     buscar(input) {
       Views.historico.filtro.busca = input.value;
-      Views.historico.atualizarResultados();
+      clearTimeout(Views.historico._t);
+      Views.historico._t = setTimeout(() => Views.historico.atualizarResultados(), 150);
     },
     filtrarPeriodo(el) {
       Views.historico.filtro.periodo = el.dataset.periodo;
@@ -70,14 +79,21 @@ Views.historico = {
       el.parentElement.querySelectorAll('button').forEach((b) => b.classList.toggle('ativo', b === el));
       Views.historico.atualizarResultados();
     },
-    abrirLancamento(el) {
-      App.navigate('lancar', { id: el.dataset.id });
-    },
   },
 };
 
+function rotuloDia(iso) {
+  const hoje = todayISODate();
+  const d = new Date(`${hoje}T00:00:00`);
+  d.setDate(d.getDate() - 1);
+  const ontem = isoDateForYearMonthDay(d.getFullYear(), d.getMonth(), d.getDate());
+  if (iso === hoje) return 'Hoje';
+  if (iso === ontem) return 'Ontem';
+  return formatDateLongBR(iso);
+}
+
 function rotuloPeriodo(p) {
-  return { mes: 'Este mês', anterior: 'Mês anterior', '3meses': 'Últimos 3 meses', ano: 'Este ano', tudo: 'Tudo' }[p];
+  return { mes: 'Este mês', anterior: 'Mês anterior', '3meses': '3 meses', ano: 'Este ano', tudo: 'Tudo' }[p];
 }
 
 function periodoParaIntervalo(periodo) {

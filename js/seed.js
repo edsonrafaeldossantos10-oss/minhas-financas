@@ -7,8 +7,9 @@ const CATEGORIAS_RECEITA_PADRAO = [
 
 const CATEGORIAS_DESPESA_PADRAO = [
   'Alimentação', 'Supermercado', 'Moradia', 'Energia', 'Água', 'Internet',
-  'Telefone', 'Transporte', 'Combustível', 'Saúde', 'Educação', 'Lazer',
-  'Compras', 'Assinaturas', 'Financiamentos', 'Impostos', 'Outros',
+  'Telefone', 'Transporte', 'Combustível', 'Saúde', 'Farmácia', 'Educação',
+  'Lazer', 'Compras', 'Vestuário', 'Beleza', 'Pets', 'Presentes', 'Viagem',
+  'Assinaturas', 'Financiamentos', 'Impostos', 'Investimentos', 'Outros',
 ];
 
 async function seedIfNeeded() {
