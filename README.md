@@ -149,6 +149,43 @@ são completamente independentes do código do app.
 
 ---
 
+## Novidades da V3.0
+
+Visual novo, mais sofisticado (grafite + dourado champanhe) e correções
+de cálculo.
+
+**Como zerar o app e começar do zero:** Menu → Configurações → Zona de
+perigo → "Apagar tudo e recomeçar" (pede para digitar APAGAR). Se o PIN
+foi esquecido, a tela de bloqueio tem "Esqueci meu PIN", que faz o mesmo.
+Nada é apagado automaticamente em atualizações.
+
+Visual:
+- Ícones em SVG no lugar de emojis na navegação, menu flutuante com botão
+  "+" dourado, cartão de saldo no estilo cartão premium, cartões de
+  crédito desenhados como cartão físico, tela de PIN nova.
+- Saudação com o nome da pessoa, atalhos rápidos (Contas, Fixas, Metas,
+  Agenda) e "Primeiros passos" quando o app está vazio.
+- Botão de olho para ocultar valores; máscara de dinheiro ao digitar
+  (1234 → 12,34); janelas próprias no lugar do `prompt()` do navegador.
+- Tema claro refeito (marfim + tinta + dourado), na mesma identidade.
+
+Correções:
+- Pagar fatura contava o gasto duas vezes no mês (compras + pagamento).
+  Agora o pagamento só tira o dinheiro da conta.
+- Vencimento da fatura saía errado quando o dia de vencimento é menor que
+  o de fechamento (ex.: fecha 25, vence 5 → vence no mês seguinte).
+- Fatura que já fechou e não foi paga sumia da tela. Agora aparece como
+  "Fechada" e pode ser paga (e o pagamento pode ser desfeito).
+- Tocar numa compra dentro do cartão não abria nada.
+- Editar lançamento e trocar o tipo criava um lançamento novo duplicado.
+- Editar parcela perdia o "(1/3)" da descrição.
+- Categoria criada durante a edição de uma receita virava categoria de
+  despesa.
+- Conta fixa anual ignorava o dia digitado; semanal pedia "dia 1 a 31".
+  Agora tem mês (anual) e dia da semana (semanal).
+- Pagar conta fixa permite ajustar valor e data (ex.: conta de luz).
+- CSV abre com acentos certos no Excel.
+
 ## Novidades da V2.1
 
 Nova identidade visual: **preto + amarelo** passou a ser o tema padrão do

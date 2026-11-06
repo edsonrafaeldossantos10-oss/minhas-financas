@@ -10,7 +10,7 @@
 // (ex.: 'v1' -> 'v2') para forçar o Android a baixar os arquivos novos.
 // ---------------------------------------------------------------------------
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `minhas-financas-${CACHE_VERSION}`;
 
 const ARQUIVOS_PARA_CACHE = [
@@ -20,6 +20,7 @@ const ARQUIVOS_PARA_CACHE = [
   './css/styles.css',
   './js/db.js',
   './js/format.js',
+  './js/icons.js',
   './js/theme.js',
   './js/seed.js',
   './js/store.js',
@@ -46,7 +47,9 @@ const ARQUIVOS_PARA_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ARQUIVOS_PARA_CACHE))
+      // cache: 'reload' → busca direto do servidor, sem pegar cópia antiga
+      // guardada pelo navegador (senão a versão nova podia vir misturada).
+      .then((cache) => cache.addAll(ARQUIVOS_PARA_CACHE.map((url) => new Request(url, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
