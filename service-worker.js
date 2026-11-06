@@ -10,7 +10,7 @@
 // (ex.: 'v1' -> 'v2') para forçar o Android a baixar os arquivos novos.
 // ---------------------------------------------------------------------------
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `minhas-financas-${CACHE_VERSION}`;
 
 const ARQUIVOS_PARA_CACHE = [
@@ -55,14 +55,19 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((nomes) => Promise.all(
-        nomes.filter((nome) => nome.startsWith('minhas-financas-') && nome !== CACHE_NAME)
-          .map((nome) => caches.delete(nome))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const nomes = await caches.keys();
+    const antigos = nomes.filter((nome) => nome.startsWith('minhas-financas-') && nome !== CACHE_NAME);
+    await Promise.all(antigos.map((nome) => caches.delete(nome)));
+    await self.clients.claim();
+    // Se havia uma versão antiga instalada, recarrega as telas abertas para
+    // que a pessoa já veja a versão nova na mesma abertura (sem precisar
+    // fechar e abrir o app de novo).
+    if (antigos.length) {
+      const janelas = await self.clients.matchAll({ type: 'window' });
+      janelas.forEach((janela) => { try { janela.navigate(janela.url); } catch (e) {} });
+    }
+  })());
 });
 
 self.addEventListener('fetch', (event) => {

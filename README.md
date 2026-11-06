@@ -157,7 +157,15 @@ de cálculo.
 **Como zerar o app e começar do zero:** Menu → Configurações → Zona de
 perigo → "Apagar tudo e recomeçar" (pede para digitar APAGAR). Se o PIN
 foi esquecido, a tela de bloqueio tem "Esqueci meu PIN", que faz o mesmo.
-Nada é apagado automaticamente em atualizações.
+
+**Reset automático único (V3):** a pedido, na primeira vez que o app
+abre na V3 ele apaga todos os dados antigos e começa do zero, sozinho.
+Isso acontece uma única vez por aparelho (fica gravada a marca
+`RESET_UNICO_ID` em `js/db.js`). Atualizações futuras NÃO apagam nada,
+desde que esse valor não seja trocado. Importar um backup também grava a
+marca, então o backup importado nunca é apagado. O service worker (v5)
+recarrega a tela automaticamente quando substitui uma versão antiga, para
+a versão nova aparecer já na primeira abertura.
 
 Visual:
 - Ícones em SVG no lugar de emojis na navegação, menu flutuante com botão
