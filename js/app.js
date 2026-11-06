@@ -22,6 +22,8 @@ const App = {
 
   async init() {
     await openDB();
+    const zerou = await DB.resetUnicoSeNecessario();
+    if (zerou) Theme.aplicar('escuro');
     await seedIfNeeded();
     this.aplicarOcultarValores();
     this.renderShell();
@@ -338,6 +340,7 @@ const App = {
 
   async apagarTudoERecomecar() {
     await DB.wipeAll();
+    await DB.marcarResetUnicoFeito();
     location.hash = '#/dashboard';
     location.reload();
   },

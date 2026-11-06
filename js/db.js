@@ -9,6 +9,13 @@
 // antes de confirmar que a gravação funcionou.
 // ---------------------------------------------------------------------------
 
+// Marca de "reset único" da V3: na primeira abertura da V3 o app apaga os
+// dados antigos (pedido do dono do app, para começar do zero). Depois disso
+// esta marca fica gravada e o reset nunca mais acontece sozinho.
+// ATENÇÃO: só troque este valor se quiser zerar o app de novo em TODOS os
+// aparelhos na próxima atualização.
+const RESET_UNICO_ID = 'v3-recomeco-2026-11';
+
 const DB_NAME = 'minhas-financas-db';
 const DB_VERSION = 1;
 
@@ -174,6 +181,23 @@ const DB = {
       await this.clear(storeName);
       if (items.length) await this.bulkPut(storeName, items);
     }
+    // um backup importado nunca deve ser apagado pelo reset único
+    await this.marcarResetUnicoFeito();
+  },
+
+  async marcarResetUnicoFeito() {
+    await this.put('configuracoes', { chave: 'reset_unico', valor: RESET_UNICO_ID });
+  },
+
+  // Roda no início do app. Se esta instalação ainda não passou pelo reset
+  // da V3, apaga tudo (dados antigos) uma única vez.
+  async resetUnicoSeNecessario() {
+    const marca = await this.get('configuracoes', 'reset_unico');
+    if (marca && marca.valor === RESET_UNICO_ID) return false;
+    await this.wipeAll();
+    try { localStorage.removeItem('mf_tema'); } catch (e) {}
+    await this.marcarResetUnicoFeito();
+    return true;
   },
 };
 
