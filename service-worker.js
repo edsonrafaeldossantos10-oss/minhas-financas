@@ -10,7 +10,7 @@
 // (ex.: 'v1' -> 'v2') para forçar o Android a baixar os arquivos novos.
 // ---------------------------------------------------------------------------
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_NAME = `minhas-financas-${CACHE_VERSION}`;
 
 const ARQUIVOS_PARA_CACHE = [
