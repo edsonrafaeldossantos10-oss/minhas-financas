@@ -14,6 +14,8 @@ const NAV_ITEMS = [
   { view: 'mais', icone: 'menu', label: 'Menu' },
 ];
 
+const NOME_PADRAO = 'Natállia';
+
 // Telas "de topo" (sem botão voltar no cabeçalho).
 const VIEWS_RAIZ = ['dashboard', 'relatorios', 'cartoes', 'mais'];
 
@@ -25,6 +27,7 @@ const App = {
     const zerou = await DB.resetUnicoSeNecessario();
     if (zerou) Theme.aplicar('escuro');
     await seedIfNeeded();
+    await this.aplicarNomePadrao();
     this.aplicarOcultarValores();
     this.renderShell();
 
@@ -34,6 +37,16 @@ const App = {
     } else {
       await this.boot();
     }
+  },
+
+  // Nome já vem preenchido (app pessoal). Aplicado uma vez só: se a pessoa
+  // mudar o nome em Configurações, a mudança é respeitada.
+  async aplicarNomePadrao() {
+    const ja = await DB.get('configuracoes', 'nome_padrao_aplicado');
+    if (ja) return;
+    const atual = await DB.get('configuracoes', 'nome_usuario');
+    if (!atual || !atual.valor) await DB.put('configuracoes', { chave: 'nome_usuario', valor: NOME_PADRAO });
+    await DB.put('configuracoes', { chave: 'nome_padrao_aplicado', valor: true });
   },
 
   async boot() {

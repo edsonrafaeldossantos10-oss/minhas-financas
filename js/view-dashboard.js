@@ -37,7 +37,8 @@ Views.dashboard = {
     return `
       <div class="saudacao">
         <div class="ola">${saudacaoDoHorario()}${nome ? ',' : ''}</div>
-        <div class="nome">${nome ? escapeHTML(nome) : 'Bem-vinda(o) 👋'}</div>
+        <div class="nome">${nome ? escapeHTML(nome) + ' ✨' : 'Bem-vinda(o) 👋'}</div>
+        ${nome ? `<div class="ola" style="margin-top:4px;">${comecando ? 'Seja bem-vinda! Vamos organizar as finanças da casa.' : 'Seja bem-vinda de volta.'}</div>` : ''}
       </div>
 
       <div class="kpi-saldo">
@@ -162,6 +163,12 @@ Views.dashboard = {
         ${recentes.length ? recentes.map(itemLancamentoHTML).join('') : vazioMini('🧾', 'Nenhum lançamento ainda.<br>Toque no botão <strong>+</strong> para registrar o primeiro.')}
       </div>
     `;
+  },
+
+  async onMount() {
+    const nome = await Store.nomeUsuario();
+    const el = document.getElementById('header-titulo');
+    if (el && nome) el.textContent = `Finanças da ${nome}`;
   },
 
   actions: {
